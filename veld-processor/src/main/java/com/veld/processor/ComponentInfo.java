@@ -24,6 +24,9 @@ public final class ComponentInfo {
     // Interfaces implemented by this component (for interface-based injection)
     private final List<String> implementedInterfaces = new ArrayList<>();
     
+    // Conditional registration info
+    private ConditionInfo conditionInfo;
+    
     private String postConstructMethod;          // Method name with @PostConstruct
     private String postConstructDescriptor;
     private String preDestroyMethod;             // Method name with @PreDestroy
@@ -174,5 +177,34 @@ public final class ComponentInfo {
      */
     public boolean hasImplementedInterfaces() {
         return !implementedInterfaces.isEmpty();
+    }
+    
+    // Conditional registration support
+    
+    /**
+     * Gets the condition info for this component.
+     * 
+     * @return condition info, or null if no conditions
+     */
+    public ConditionInfo getConditionInfo() {
+        return conditionInfo;
+    }
+    
+    /**
+     * Sets the condition info for this component.
+     * 
+     * @param conditionInfo the conditions to apply
+     */
+    public void setConditionInfo(ConditionInfo conditionInfo) {
+        this.conditionInfo = conditionInfo;
+    }
+    
+    /**
+     * Checks if this component has conditional registration.
+     * 
+     * @return true if conditions are defined
+     */
+    public boolean hasConditions() {
+        return conditionInfo != null && conditionInfo.hasConditions();
     }
 }

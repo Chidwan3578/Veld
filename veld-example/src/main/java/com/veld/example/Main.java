@@ -19,6 +19,10 @@ import com.veld.runtime.VeldContainer;
  * 10. @Lazy initialization (ExpensiveService)
  * 11. Provider<T> injection (ReportGenerator)
  * 12. @Optional and Optional<T> injection (OptionalDemoService)
+ * 13. @Conditional annotations (ConditionalDemoService)
+ *     - @ConditionalOnProperty
+ *     - @ConditionalOnClass
+ *     - @ConditionalOnMissingBean
  * 
  * Simple API: Just create a new VeldContainer() - that's it!
  * All bytecode generation happens at compile-time using ASM.
@@ -78,7 +82,12 @@ public class Main {
             demonstrateOptionalInjection(container);
             
             System.out.println("\n══════════════════════════════════════════════════════════");
-            System.out.println("9. SERVICE USAGE");
+            System.out.println("9. @CONDITIONAL ANNOTATIONS");
+            System.out.println("══════════════════════════════════════════════════════════");
+            demonstrateConditional(container);
+            
+            System.out.println("\n══════════════════════════════════════════════════════════");
+            System.out.println("10. SERVICE USAGE");
             System.out.println("══════════════════════════════════════════════════════════");
             demonstrateServiceUsage(container);
             
@@ -325,6 +334,82 @@ public class Main {
         
         System.out.println("\n→ Summary: Optional injection allows graceful handling of");
         System.out.println("  missing dependencies without throwing exceptions!");
+    }
+    
+    /**
+     * Demonstrates conditional component registration.
+     * Components can be conditionally registered based on:
+     * - System properties (@ConditionalOnProperty)
+     * - Classpath presence (@ConditionalOnClass)
+     * - Missing beans (@ConditionalOnMissingBean)
+     */
+    private static void demonstrateConditional(VeldContainer container) {
+        System.out.println("\n→ Conditional Registration Demo:");
+        System.out.println("  Components are registered based on conditions evaluated at runtime.");
+        
+        // Show excluded components
+        System.out.println("\n→ Components excluded due to failing conditions:");
+        java.util.List<String> excluded = container.getExcludedComponents();
+        if (excluded.isEmpty()) {
+            System.out.println("  (no components excluded)");
+        } else {
+            for (String name : excluded) {
+                System.out.println("  - " + name);
+            }
+        }
+        
+        // Test @ConditionalOnMissingBean - DefaultDatabaseService
+        System.out.println("\n→ @ConditionalOnMissingBean Demo:");
+        System.out.println("  DefaultDatabaseService is registered only if no other DatabaseService exists.");
+        boolean hasDbService = container.contains(DatabaseService.class);
+        System.out.println("  DatabaseService available? " + (hasDbService ? "YES" : "NO"));
+        if (hasDbService) {
+            DatabaseService db = container.get(DatabaseService.class);
+            System.out.println("  Using: " + db.getClass().getSimpleName());
+            System.out.println("  Connection info: " + db.getConnectionInfo());
+        }
+        
+        // Test @ConditionalOnProperty - DebugService
+        System.out.println("\n→ @ConditionalOnProperty Demo:");
+        System.out.println("  DebugService requires: -Dapp.debug=true or APP_DEBUG=true");
+        String debugProp = System.getProperty("app.debug", System.getenv("APP_DEBUG"));
+        System.out.println("  Current app.debug value: " + (debugProp != null ? debugProp : "<not set>"));
+        boolean hasDebug = container.contains(DebugService.class);
+        System.out.println("  DebugService available? " + (hasDebug ? "YES" : "NO"));
+        if (hasDebug) {
+            DebugService debug = container.get(DebugService.class);
+            debug.logDebug("Conditional registration is working!");
+        }
+        
+        // Test @ConditionalOnProperty - FeatureXService
+        System.out.println("\n→ @ConditionalOnProperty Demo (Feature Flag):");
+        System.out.println("  FeatureXService requires: feature.x.enabled to exist");
+        String featureX = System.getProperty("feature.x.enabled", System.getenv("FEATURE_X_ENABLED"));
+        System.out.println("  Current feature.x.enabled value: " + (featureX != null ? featureX : "<not set>"));
+        boolean hasFeatureX = container.contains(FeatureXService.class);
+        System.out.println("  FeatureXService available? " + (hasFeatureX ? "YES" : "NO"));
+        
+        // Test @ConditionalOnClass - JacksonJsonService
+        System.out.println("\n→ @ConditionalOnClass Demo:");
+        System.out.println("  JacksonJsonService requires: com.fasterxml.jackson.databind.ObjectMapper");
+        boolean jacksonOnClasspath = false;
+        try {
+            Class.forName("com.fasterxml.jackson.databind.ObjectMapper");
+            jacksonOnClasspath = true;
+        } catch (ClassNotFoundException e) {
+            // Not on classpath
+        }
+        System.out.println("  Jackson on classpath? " + (jacksonOnClasspath ? "YES" : "NO"));
+        boolean hasJackson = container.contains(JacksonJsonService.class);
+        System.out.println("  JacksonJsonService available? " + (hasJackson ? "YES" : "NO"));
+        
+        // ConditionalDemoService demonstrates using these conditionally-registered services
+        System.out.println("\n→ ConditionalDemoService integrates with conditional beans:");
+        ConditionalDemoService conditionalDemo = container.get(ConditionalDemoService.class);
+        conditionalDemo.runDemo();
+        
+        System.out.println("\n→ Summary: @Conditional annotations enable auto-configuration");
+        System.out.println("  by registering beans only when specific conditions are met.");
     }
     
     /**

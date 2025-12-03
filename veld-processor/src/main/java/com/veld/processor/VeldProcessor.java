@@ -284,6 +284,9 @@ public class VeldProcessor extends AbstractProcessor {
         // Analyze implemented interfaces for interface-based injection
         analyzeInterfaces(typeElement, info);
         
+        // Analyze conditional annotations
+        analyzeConditions(typeElement, info);
+        
         return info;
     }
     
@@ -532,6 +535,92 @@ public class VeldProcessor extends AbstractProcessor {
                     method.getSimpleName().toString(),
                     descriptor,
                     dependencies));
+        }
+    }
+    
+    /**
+     * Analyzes conditional annotations on the component.
+     * Supports @ConditionalOnProperty, @ConditionalOnClass, @ConditionalOnMissingBean.
+     */
+    private void analyzeConditions(TypeElement typeElement, ComponentInfo info) {
+        ConditionInfo conditionInfo = new ConditionInfo();
+        
+        // Check for @ConditionalOnProperty
+        ConditionalOnProperty propertyCondition = typeElement.getAnnotation(ConditionalOnProperty.class);
+        if (propertyCondition != null) {
+            conditionInfo.addPropertyCondition(
+                propertyCondition.name(),
+                propertyCondition.havingValue(),
+                propertyCondition.matchIfMissing()
+            );
+            note("  -> Conditional on property: " + propertyCondition.name());
+        }
+        
+        // Check for @ConditionalOnClass
+        ConditionalOnClass classCondition = typeElement.getAnnotation(ConditionalOnClass.class);
+        if (classCondition != null) {
+            List<String> classNames = new ArrayList<>();
+            
+            // Get class names from 'name' attribute
+            for (String name : classCondition.name()) {
+                if (!name.isEmpty()) {
+                    classNames.add(name);
+                }
+            }
+            
+            // Get class names from 'value' attribute (Class[] types)
+            // We need to handle this carefully due to MirroredTypeException
+            try {
+                for (Class<?> clazz : classCondition.value()) {
+                    classNames.add(clazz.getName());
+                }
+            } catch (javax.lang.model.type.MirroredTypesException e) {
+                for (TypeMirror mirror : e.getTypeMirrors()) {
+                    classNames.add(getTypeName(mirror));
+                }
+            }
+            
+            if (!classNames.isEmpty()) {
+                conditionInfo.addClassCondition(classNames);
+                note("  -> Conditional on class: " + String.join(", ", classNames));
+            }
+        }
+        
+        // Check for @ConditionalOnMissingBean
+        ConditionalOnMissingBean missingBeanCondition = typeElement.getAnnotation(ConditionalOnMissingBean.class);
+        if (missingBeanCondition != null) {
+            // Get bean types
+            List<String> beanTypes = new ArrayList<>();
+            try {
+                for (Class<?> clazz : missingBeanCondition.value()) {
+                    beanTypes.add(clazz.getName());
+                }
+            } catch (javax.lang.model.type.MirroredTypesException e) {
+                for (TypeMirror mirror : e.getTypeMirrors()) {
+                    beanTypes.add(getTypeName(mirror));
+                }
+            }
+            
+            // Get bean names
+            List<String> beanNames = new ArrayList<>();
+            for (String name : missingBeanCondition.name()) {
+                if (!name.isEmpty()) {
+                    beanNames.add(name);
+                }
+            }
+            
+            if (!beanTypes.isEmpty()) {
+                conditionInfo.addMissingBeanTypeCondition(beanTypes);
+                note("  -> Conditional on missing bean types: " + String.join(", ", beanTypes));
+            }
+            if (!beanNames.isEmpty()) {
+                conditionInfo.addMissingBeanNameCondition(beanNames);
+                note("  -> Conditional on missing bean names: " + String.join(", ", beanNames));
+            }
+        }
+        
+        if (conditionInfo.hasConditions()) {
+            info.setConditionInfo(conditionInfo);
         }
     }
     

@@ -40,6 +40,10 @@ public final class ComponentFactoryGenerator {
     private static final String OBJECT = "java/lang/Object";
     private static final String CLASS = "java/lang/Class";
     private static final String STRING = "java/lang/String";
+    private static final String LIST = "java/util/List";
+    private static final String ARRAYS = "java/util/Arrays";
+    private static final String CONDITION_CONTEXT = "com/veld/runtime/condition/ConditionContext";
+    private static final String CONDITION_EVALUATOR = "com/veld/runtime/condition/ConditionEvaluator";
     
     private final ComponentInfo component;
     
@@ -90,6 +94,18 @@ public final class ComponentFactoryGenerator {
         
         // invokePreDestroy(T) method
         generateInvokePreDestroy(cw, componentInternal);
+        
+        // Conditional registration methods
+        if (component.hasConditions()) {
+            generateHasConditions(cw);
+            generateEvaluateConditions(cw);
+            generateCreateConditionEvaluator(cw);
+        }
+        
+        // getImplementedInterfaces() method
+        if (component.hasImplementedInterfaces()) {
+            generateGetImplementedInterfaces(cw);
+        }
         
         // Bridge methods for type erasure
         generateBridgeMethods(cw, factoryInternal, componentInternal);
@@ -376,6 +392,161 @@ public final class ComponentFactoryGenerator {
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, factoryInternal, "create",
                 "(L" + VELD_CONTAINER + ";)L" + componentInternal + ";", false);
+        mv.visitInsn(ARETURN);
+        
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+    
+    // ===================== Conditional Registration Methods =====================
+    
+    private void generateHasConditions(ClassWriter cw) {
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "hasConditions", "()Z", null, null);
+        mv.visitCode();
+        mv.visitInsn(ICONST_1); // return true
+        mv.visitInsn(IRETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+    
+    private void generateEvaluateConditions(ClassWriter cw) {
+        // public boolean evaluateConditions(ConditionContext context)
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "evaluateConditions",
+                "(L" + CONDITION_CONTEXT + ";)Z", null, null);
+        mv.visitCode();
+        
+        // ConditionEvaluator evaluator = createConditionEvaluator();
+        // return evaluator.evaluate(context);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(INVOKEVIRTUAL, component.getFactoryInternalName(), 
+                "createConditionEvaluator", "()L" + CONDITION_EVALUATOR + ";", false);
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitMethodInsn(INVOKEVIRTUAL, CONDITION_EVALUATOR, "evaluate",
+                "(L" + CONDITION_CONTEXT + ";)Z", false);
+        mv.visitInsn(IRETURN);
+        
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+    
+    private void generateCreateConditionEvaluator(ClassWriter cw) {
+        // public ConditionEvaluator createConditionEvaluator()
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "createConditionEvaluator",
+                "()L" + CONDITION_EVALUATOR + ";", null, null);
+        mv.visitCode();
+        
+        ConditionInfo conditions = component.getConditionInfo();
+        
+        // ConditionEvaluator evaluator = new ConditionEvaluator(componentName);
+        mv.visitTypeInsn(NEW, CONDITION_EVALUATOR);
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(component.getComponentName());
+        mv.visitMethodInsn(INVOKESPECIAL, CONDITION_EVALUATOR, "<init>",
+                "(L" + STRING + ";)V", false);
+        mv.visitVarInsn(ASTORE, 1); // Store evaluator in local var 1
+        
+        // Add property conditions
+        for (ConditionInfo.PropertyConditionInfo prop : conditions.getPropertyConditions()) {
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitLdcInsn(prop.getName());
+            mv.visitLdcInsn(prop.getHavingValue() != null ? prop.getHavingValue() : "");
+            mv.visitInsn(prop.isMatchIfMissing() ? ICONST_1 : ICONST_0);
+            mv.visitMethodInsn(INVOKEVIRTUAL, CONDITION_EVALUATOR, "addPropertyCondition",
+                    "(L" + STRING + ";L" + STRING + ";Z)L" + CONDITION_EVALUATOR + ";", false);
+            mv.visitInsn(POP);
+        }
+        
+        // Add class conditions
+        for (ConditionInfo.ClassConditionInfo classInfo : conditions.getClassConditions()) {
+            mv.visitVarInsn(ALOAD, 1);
+            // Create String[] array with class names
+            int size = classInfo.getClassNames().size();
+            mv.visitIntInsn(BIPUSH, size);
+            mv.visitTypeInsn(ANEWARRAY, STRING);
+            
+            for (int i = 0; i < size; i++) {
+                mv.visitInsn(DUP);
+                mv.visitIntInsn(BIPUSH, i);
+                mv.visitLdcInsn(classInfo.getClassNames().get(i));
+                mv.visitInsn(AASTORE);
+            }
+            
+            mv.visitMethodInsn(INVOKEVIRTUAL, CONDITION_EVALUATOR, "addClassCondition",
+                    "([L" + STRING + ";)L" + CONDITION_EVALUATOR + ";", false);
+            mv.visitInsn(POP);
+        }
+        
+        // Add missing bean conditions
+        for (ConditionInfo.MissingBeanConditionInfo missing : conditions.getMissingBeanConditions()) {
+            // Types
+            if (!missing.getBeanTypes().isEmpty()) {
+                mv.visitVarInsn(ALOAD, 1);
+                int size = missing.getBeanTypes().size();
+                mv.visitIntInsn(BIPUSH, size);
+                mv.visitTypeInsn(ANEWARRAY, STRING);
+                
+                for (int i = 0; i < size; i++) {
+                    mv.visitInsn(DUP);
+                    mv.visitIntInsn(BIPUSH, i);
+                    mv.visitLdcInsn(missing.getBeanTypes().get(i));
+                    mv.visitInsn(AASTORE);
+                }
+                
+                mv.visitMethodInsn(INVOKEVIRTUAL, CONDITION_EVALUATOR, "addMissingBeanCondition",
+                        "([L" + STRING + ";)L" + CONDITION_EVALUATOR + ";", false);
+                mv.visitInsn(POP);
+            }
+            
+            // Names
+            if (!missing.getBeanNames().isEmpty()) {
+                mv.visitVarInsn(ALOAD, 1);
+                int size = missing.getBeanNames().size();
+                mv.visitIntInsn(BIPUSH, size);
+                mv.visitTypeInsn(ANEWARRAY, STRING);
+                
+                for (int i = 0; i < size; i++) {
+                    mv.visitInsn(DUP);
+                    mv.visitIntInsn(BIPUSH, i);
+                    mv.visitLdcInsn(missing.getBeanNames().get(i));
+                    mv.visitInsn(AASTORE);
+                }
+                
+                mv.visitMethodInsn(INVOKEVIRTUAL, CONDITION_EVALUATOR, "addMissingBeanNameCondition",
+                        "([L" + STRING + ";)L" + CONDITION_EVALUATOR + ";", false);
+                mv.visitInsn(POP);
+            }
+        }
+        
+        // return evaluator;
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitInsn(ARETURN);
+        
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+    
+    private void generateGetImplementedInterfaces(ClassWriter cw) {
+        // public List<String> getImplementedInterfaces()
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getImplementedInterfaces",
+                "()L" + LIST + ";", "()L" + LIST + "<L" + STRING + ";>;", null);
+        mv.visitCode();
+        
+        java.util.List<String> interfaces = component.getImplementedInterfaces();
+        int size = interfaces.size();
+        
+        // return Arrays.asList("Interface1", "Interface2", ...);
+        mv.visitIntInsn(BIPUSH, size);
+        mv.visitTypeInsn(ANEWARRAY, STRING);
+        
+        for (int i = 0; i < size; i++) {
+            mv.visitInsn(DUP);
+            mv.visitIntInsn(BIPUSH, i);
+            mv.visitLdcInsn(interfaces.get(i));
+            mv.visitInsn(AASTORE);
+        }
+        
+        mv.visitMethodInsn(INVOKESTATIC, ARRAYS, "asList",
+                "([L" + OBJECT + ";)L" + LIST + ";", false);
         mv.visitInsn(ARETURN);
         
         mv.visitMaxs(0, 0);

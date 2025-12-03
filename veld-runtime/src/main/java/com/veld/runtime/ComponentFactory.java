@@ -1,5 +1,10 @@
 package com.veld.runtime;
 
+import com.veld.runtime.condition.ConditionContext;
+import com.veld.runtime.condition.ConditionEvaluator;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Interface implemented by generated factory classes.
  * Each component annotated with @Component will have a corresponding
@@ -62,4 +67,44 @@ public interface ComponentFactory<T> {
      * @param instance the component instance
      */
     void invokePreDestroy(T instance);
+    
+    /**
+     * Returns true if this component has conditional registration.
+     *
+     * @return true if conditions must be evaluated
+     */
+    default boolean hasConditions() {
+        return false;
+    }
+    
+    /**
+     * Evaluates whether this component should be registered based on its conditions.
+     * Only called if {@link #hasConditions()} returns true.
+     *
+     * @param context the condition evaluation context
+     * @return true if all conditions are satisfied
+     */
+    default boolean evaluateConditions(ConditionContext context) {
+        return true;
+    }
+    
+    /**
+     * Creates and configures a ConditionEvaluator for this component.
+     * Override this method in generated factories to add conditions.
+     *
+     * @return the condition evaluator, or null if no conditions
+     */
+    default ConditionEvaluator createConditionEvaluator() {
+        return null;
+    }
+    
+    /**
+     * Returns the list of interfaces implemented by this component.
+     * Used for @ConditionalOnMissingBean type checking.
+     *
+     * @return list of fully qualified interface names
+     */
+    default List<String> getImplementedInterfaces() {
+        return Collections.emptyList();
+    }
 }

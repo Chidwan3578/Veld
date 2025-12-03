@@ -58,7 +58,8 @@ public class VeldContainer {
     }
     
     /**
-     * Loads the generated VeldRegistry using MethodHandle.
+     * Loads the generated VeldRegistry using MethodHandle and wraps it
+     * with ConditionalRegistry to evaluate @Conditional annotations.
      * 
      * This approach uses java.lang.invoke.MethodHandle which is:
      * - NOT traditional reflection (no Constructor.newInstance)
@@ -68,11 +69,19 @@ public class VeldContainer {
      * 
      * The generated Veld bootstrap class provides a static createRegistry()
      * method that directly instantiates VeldRegistry without reflection.
+     * 
+     * The ConditionalRegistry wrapper evaluates:
+     * - @ConditionalOnProperty - checks system properties/env vars
+     * - @ConditionalOnClass - checks classpath for required classes
+     * - @ConditionalOnMissingBean - checks for absence of beans
      */
     private static ComponentRegistry loadGeneratedRegistry() {
         try {
             MethodHandle handle = getCreateRegistryHandle();
-            return (ComponentRegistry) handle.invoke();
+            ComponentRegistry generatedRegistry = (ComponentRegistry) handle.invoke();
+            
+            // Wrap with ConditionalRegistry to evaluate conditions
+            return new ConditionalRegistry(generatedRegistry);
         } catch (VeldException e) {
             throw e;
         } catch (Throwable e) {
@@ -422,5 +431,31 @@ public class VeldContainer {
         if (closed) {
             throw new VeldException("Container has been closed");
         }
+    }
+    
+    /**
+     * Returns information about components excluded due to failing conditions.
+     * Only available if the container uses a ConditionalRegistry.
+     * 
+     * @return list of excluded component names, or empty list if not applicable
+     */
+    public List<String> getExcludedComponents() {
+        if (registry instanceof ConditionalRegistry) {
+            return ((ConditionalRegistry) registry).getExcludedComponents();
+        }
+        return List.of();
+    }
+    
+    /**
+     * Checks if a component was excluded due to failing conditions.
+     * 
+     * @param componentName the component name to check
+     * @return true if the component was excluded
+     */
+    public boolean wasExcluded(String componentName) {
+        if (registry instanceof ConditionalRegistry) {
+            return ((ConditionalRegistry) registry).wasExcluded(componentName);
+        }
+        return false;
     }
 }
