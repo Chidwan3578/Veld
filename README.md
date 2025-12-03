@@ -35,21 +35,21 @@ A lightweight, compile-time Dependency Injection framework for Java using pure A
     <dependency>
         <groupId>com.veld</groupId>
         <artifactId>veld-annotations</artifactId>
-        <version>1.0.0-alpha.3</version>
+        <version>1.0.0-alpha.4</version>
     </dependency>
     
     <!-- Veld Runtime -->
     <dependency>
         <groupId>com.veld</groupId>
         <artifactId>veld-runtime</artifactId>
-        <version>1.0.0-alpha.3</version>
+        <version>1.0.0-alpha.4</version>
     </dependency>
     
     <!-- Veld Processor (compile-time only) -->
     <dependency>
         <groupId>com.veld</groupId>
         <artifactId>veld-processor</artifactId>
-        <version>1.0.0-alpha.3</version>
+        <version>1.0.0-alpha.4</version>
         <scope>provided</scope>
     </dependency>
 </dependencies>
@@ -71,7 +71,7 @@ A lightweight, compile-time Dependency Injection framework for Java using pure A
                     <path>
                         <groupId>com.veld</groupId>
                         <artifactId>veld-processor</artifactId>
-                        <version>1.0.0-alpha.3</version>
+                        <version>1.0.0-alpha.4</version>
                     </path>
                 </annotationProcessorPaths>
             </configuration>
@@ -563,7 +563,7 @@ public class UserService$$VeldFactory implements ComponentFactory<UserService> {
 - Added `ConditionalRegistry` for filtering components based on conditions
 - Conditions evaluated at container initialization time
 
-### v1.0.0-alpha.3 (2025-12-03)
+### v1.0.0-alpha.4 (2025-12-03)
 - Added `@Optional` annotation for optional dependency injection
 - Added `Optional<T>` wrapper support for optional dependencies
 - Added `container.tryGet()` method (returns null if not found)
