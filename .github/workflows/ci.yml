@@ -27,8 +27,8 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           cache: maven
 
-      - name: Build with Maven
-        run: mvn clean compile -B
+      - name: Build and Install Modules
+        run: mvn clean install -DskipTests -B
 
       - name: Run Tests
         run: mvn test -B
@@ -75,14 +75,14 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           cache: maven
 
-      - name: Full Verify (compile, test, package, verify)
+      - name: Install All Modules
+        run: mvn clean install -DskipTests -B
+
+      - name: Run Tests and Verify
         run: mvn verify -B
 
       - name: Run Example Application
-        run: |
-          cd veld-example
-          mvn dependency:build-classpath -Dmdep.outputFile=target/cp.txt -q
-          java -cp "target/classes:$(cat target/cp.txt)" com.veld.example.Main
+        run: mvn -pl veld-example exec:java -Dexec.mainClass="com.veld.example.Main" -B
 
   # Build on multiple Java versions
   compatibility:
