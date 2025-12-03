@@ -297,6 +297,77 @@ public class VeldContainer {
         // For prototypes, we return a proxy-like behavior through the instance
         return getInstance(factory);
     }
+    
+    /**
+     * Tries to get a component by its type, returning null if not found.
+     * This is used for @Optional dependency injection.
+     *
+     * @param type the component type
+     * @param <T> the component type
+     * @return the component instance, or null if not found
+     */
+    public <T> T tryGet(Class<T> type) {
+        checkNotClosed();
+        ComponentFactory<T> factory = registry.getFactory(type);
+        if (factory == null) {
+            return null;
+        }
+        return getInstance(factory);
+    }
+    
+    /**
+     * Tries to get a component by its name, returning null if not found.
+     * This is used for @Optional dependency injection with @Named.
+     *
+     * @param name the component name
+     * @param <T> the expected type
+     * @return the component instance, or null if not found
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T tryGet(String name) {
+        checkNotClosed();
+        ComponentFactory<?> factory = registry.getFactory(name);
+        if (factory == null) {
+            return null;
+        }
+        return (T) getInstance(factory);
+    }
+    
+    /**
+     * Gets a component wrapped in an Optional.
+     * Returns Optional.empty() if the component is not found.
+     * This is used for Optional&lt;T&gt; dependency injection.
+     *
+     * @param type the component type
+     * @param <T> the component type
+     * @return Optional containing the component, or Optional.empty() if not found
+     */
+    public <T> java.util.Optional<T> getOptional(Class<T> type) {
+        checkNotClosed();
+        ComponentFactory<T> factory = registry.getFactory(type);
+        if (factory == null) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(getInstance(factory));
+    }
+    
+    /**
+     * Gets a component by name wrapped in an Optional.
+     * Returns Optional.empty() if the component is not found.
+     *
+     * @param name the component name
+     * @param <T> the expected type
+     * @return Optional containing the component, or Optional.empty() if not found
+     */
+    @SuppressWarnings("unchecked")
+    public <T> java.util.Optional<T> getOptional(String name) {
+        checkNotClosed();
+        ComponentFactory<?> factory = registry.getFactory(name);
+        if (factory == null) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of((T) getInstance(factory));
+    }
 
     /**
      * Closes the container and destroys all singleton components.

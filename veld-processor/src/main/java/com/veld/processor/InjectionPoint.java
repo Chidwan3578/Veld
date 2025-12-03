@@ -51,21 +51,31 @@ public final class InjectionPoint {
         private final String qualifierName;      // @Named value, or null
         private final boolean isProvider;        // true if Provider<T>
         private final boolean isLazy;            // true if @Lazy
-        private final String actualTypeName;     // For Provider<T>, the T type
-        private final String actualTypeDescriptor; // For Provider<T>, the T descriptor
+        private final boolean isOptional;        // true if @Optional annotation present
+        private final boolean isOptionalWrapper; // true if type is java.util.Optional<T>
+        private final String actualTypeName;     // For Provider<T>/Optional<T>, the T type
+        private final String actualTypeDescriptor; // For Provider<T>/Optional<T>, the T descriptor
         
         public Dependency(String typeName, String typeDescriptor, String qualifierName) {
-            this(typeName, typeDescriptor, qualifierName, false, false, typeName, typeDescriptor);
+            this(typeName, typeDescriptor, qualifierName, false, false, false, false, typeName, typeDescriptor);
         }
         
         public Dependency(String typeName, String typeDescriptor, String qualifierName,
                           boolean isProvider, boolean isLazy, 
+                          String actualTypeName, String actualTypeDescriptor) {
+            this(typeName, typeDescriptor, qualifierName, isProvider, isLazy, false, false, actualTypeName, actualTypeDescriptor);
+        }
+        
+        public Dependency(String typeName, String typeDescriptor, String qualifierName,
+                          boolean isProvider, boolean isLazy, boolean isOptional, boolean isOptionalWrapper,
                           String actualTypeName, String actualTypeDescriptor) {
             this.typeName = typeName;
             this.typeDescriptor = typeDescriptor;
             this.qualifierName = qualifierName;
             this.isProvider = isProvider;
             this.isLazy = isLazy;
+            this.isOptional = isOptional;
+            this.isOptionalWrapper = isOptionalWrapper;
             this.actualTypeName = actualTypeName;
             this.actualTypeDescriptor = actualTypeDescriptor;
         }
@@ -117,10 +127,32 @@ public final class InjectionPoint {
         }
         
         /**
-         * Returns true if this dependency needs special handling (Provider or Lazy).
+         * Returns true if this dependency is marked with @Optional.
+         */
+        public boolean isOptional() {
+            return isOptional;
+        }
+        
+        /**
+         * Returns true if this dependency is of type java.util.Optional&lt;T&gt;.
+         */
+        public boolean isOptionalWrapper() {
+            return isOptionalWrapper;
+        }
+        
+        /**
+         * Returns true if this dependency should allow missing beans.
+         * Either @Optional annotation or Optional&lt;T&gt; type.
+         */
+        public boolean allowsMissing() {
+            return isOptional || isOptionalWrapper;
+        }
+        
+        /**
+         * Returns true if this dependency needs special handling (Provider, Lazy, or Optional).
          */
         public boolean needsSpecialHandling() {
-            return isProvider || isLazy;
+            return isProvider || isLazy || isOptional || isOptionalWrapper;
         }
     }
 }

@@ -36,6 +36,7 @@ public final class ComponentFactoryGenerator {
     private static final String VELD_CONTAINER = "com/veld/runtime/VeldContainer";
     private static final String SCOPE = "com/veld/runtime/Scope";
     private static final String PROVIDER = "com/veld/runtime/Provider";
+    private static final String OPTIONAL = "java/util/Optional";
     private static final String OBJECT = "java/lang/Object";
     private static final String CLASS = "java/lang/Class";
     private static final String STRING = "java/lang/String";
@@ -167,7 +168,13 @@ public final class ComponentFactoryGenerator {
     }
     
     private void loadDependency(MethodVisitor mv, Dependency dep) {
-        if (dep.isProvider()) {
+        if (dep.isOptionalWrapper()) {
+            // For Optional<T>, call container.getOptional(T.class)
+            loadOptionalWrapperDependency(mv, dep);
+        } else if (dep.isOptional()) {
+            // For @Optional, call container.tryGet(T.class) which returns null if not found
+            loadOptionalDependency(mv, dep);
+        } else if (dep.isProvider()) {
             // For Provider<T>, call container.getProvider(T.class)
             loadProviderDependency(mv, dep);
         } else if (dep.isLazy()) {
@@ -215,6 +222,31 @@ public final class ComponentFactoryGenerator {
         
         // Cast to dependency type
         mv.visitTypeInsn(CHECKCAST, actualTypeInternal);
+    }
+    
+    private void loadOptionalDependency(MethodVisitor mv, Dependency dep) {
+        String depInternal = dep.getActualTypeName().replace('.', '/');
+        
+        // container.tryGet(DependencyType.class) - returns null if not found
+        mv.visitVarInsn(ALOAD, 1); // Load container (parameter 1)
+        mv.visitLdcInsn(org.objectweb.asm.Type.getObjectType(depInternal));
+        mv.visitMethodInsn(INVOKEVIRTUAL, VELD_CONTAINER, "tryGet",
+                "(L" + CLASS + ";)L" + OBJECT + ";", false);
+        
+        // Cast to dependency type (or null)
+        mv.visitTypeInsn(CHECKCAST, depInternal);
+    }
+    
+    private void loadOptionalWrapperDependency(MethodVisitor mv, Dependency dep) {
+        String actualTypeInternal = dep.getActualTypeName().replace('.', '/');
+        
+        // container.getOptional(ActualType.class) - returns Optional<T>
+        mv.visitVarInsn(ALOAD, 1); // Load container (parameter 1)
+        mv.visitLdcInsn(org.objectweb.asm.Type.getObjectType(actualTypeInternal));
+        mv.visitMethodInsn(INVOKEVIRTUAL, VELD_CONTAINER, "getOptional",
+                "(L" + CLASS + ";)L" + OPTIONAL + ";", false);
+        
+        // No cast needed - Optional<T> is returned
     }
     
     private void generateGetComponentType(ClassWriter cw, String componentInternal) {

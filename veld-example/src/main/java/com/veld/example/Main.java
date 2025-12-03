@@ -18,6 +18,7 @@ import com.veld.runtime.VeldContainer;
  * 9. Jakarta Inject compatibility (jakarta.inject.*)
  * 10. @Lazy initialization (ExpensiveService)
  * 11. Provider<T> injection (ReportGenerator)
+ * 12. @Optional and Optional<T> injection (OptionalDemoService)
  * 
  * Simple API: Just create a new VeldContainer() - that's it!
  * All bytecode generation happens at compile-time using ASM.
@@ -72,7 +73,12 @@ public class Main {
             demonstrateProvider(container);
             
             System.out.println("\n══════════════════════════════════════════════════════════");
-            System.out.println("8. SERVICE USAGE");
+            System.out.println("8. @OPTIONAL AND Optional<T> INJECTION");
+            System.out.println("══════════════════════════════════════════════════════════");
+            demonstrateOptionalInjection(container);
+            
+            System.out.println("\n══════════════════════════════════════════════════════════");
+            System.out.println("9. SERVICE USAGE");
             System.out.println("══════════════════════════════════════════════════════════");
             demonstrateServiceUsage(container);
             
@@ -284,6 +290,41 @@ public class Main {
         RequestContext ctx1 = ctxProvider.get();
         RequestContext ctx2 = ctxProvider.get();
         System.out.println("  Provider.get() creates new prototype: " + (ctx1 != ctx2 ? "YES ✓" : "NO ✗"));
+    }
+    
+    /**
+     * Demonstrates optional dependency injection.
+     * Dependencies marked with @Optional or typed as Optional<T> don't fail if missing.
+     */
+    private static void demonstrateOptionalInjection(VeldContainer container) {
+        System.out.println("\n→ OptionalDemoService has optional dependencies:");
+        System.out.println("  - @Optional CacheService (not registered - will be null)");
+        System.out.println("  - Optional<MetricsService> (not registered - will be empty)");
+        System.out.println("  - LogService (required - will be injected)");
+        
+        System.out.println("\n→ Getting OptionalDemoService...");
+        OptionalDemoService optionalDemo = container.get(OptionalDemoService.class);
+        
+        System.out.println("\n→ Using the service (gracefully handles missing dependencies):");
+        optionalDemo.doWork();
+        
+        System.out.println("\n→ Testing container.tryGet() for non-existent component:");
+        CacheService cache = container.tryGet(CacheService.class);
+        System.out.println("  container.tryGet(CacheService.class): " + 
+            (cache == null ? "null (expected)" : "found"));
+        
+        System.out.println("\n→ Testing container.getOptional() for non-existent component:");
+        java.util.Optional<MetricsService> metrics = container.getOptional(MetricsService.class);
+        System.out.println("  container.getOptional(MetricsService.class): " + 
+            (metrics.isEmpty() ? "Optional.empty() (expected)" : "found"));
+        
+        System.out.println("\n→ Testing container.getOptional() for existing component:");
+        java.util.Optional<LogService> logOpt = container.getOptional(LogService.class);
+        System.out.println("  container.getOptional(LogService.class): " + 
+            (logOpt.isPresent() ? "Optional[LogService] (expected)" : "empty"));
+        
+        System.out.println("\n→ Summary: Optional injection allows graceful handling of");
+        System.out.println("  missing dependencies without throwing exceptions!");
     }
     
     /**

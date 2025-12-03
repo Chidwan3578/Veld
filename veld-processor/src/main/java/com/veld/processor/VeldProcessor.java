@@ -199,29 +199,36 @@ public class VeldProcessor extends AbstractProcessor {
     /**
      * Builds the dependency graph for a component.
      * Adds the component and all its dependencies to the graph.
+     * Optional dependencies are excluded from cycle detection since they can be null.
      */
     private void buildDependencyGraph(ComponentInfo info) {
         String componentName = info.getClassName();
         dependencyGraph.addComponent(componentName);
         
-        // Add constructor dependencies
+        // Add constructor dependencies (skip optional ones)
         if (info.getConstructorInjection() != null) {
             for (InjectionPoint.Dependency dep : info.getConstructorInjection().getDependencies()) {
-                dependencyGraph.addDependency(componentName, dep.getTypeName());
+                if (!dep.allowsMissing()) {
+                    dependencyGraph.addDependency(componentName, dep.getActualTypeName());
+                }
             }
         }
         
-        // Add field dependencies
+        // Add field dependencies (skip optional ones)
         for (InjectionPoint field : info.getFieldInjections()) {
             for (InjectionPoint.Dependency dep : field.getDependencies()) {
-                dependencyGraph.addDependency(componentName, dep.getTypeName());
+                if (!dep.allowsMissing()) {
+                    dependencyGraph.addDependency(componentName, dep.getActualTypeName());
+                }
             }
         }
         
-        // Add method dependencies
+        // Add method dependencies (skip optional ones)
         for (InjectionPoint method : info.getMethodInjections()) {
             for (InjectionPoint.Dependency dep : method.getDependencies()) {
-                dependencyGraph.addDependency(componentName, dep.getTypeName());
+                if (!dep.allowsMissing()) {
+                    dependencyGraph.addDependency(componentName, dep.getActualTypeName());
+                }
             }
         }
     }
@@ -574,19 +581,36 @@ public class VeldProcessor extends AbstractProcessor {
             note("    -> Lazy injection for: " + element.getSimpleName());
         }
         
+        // Check for @Optional annotation
+        boolean isOptional = element.getAnnotation(com.veld.annotation.Optional.class) != null;
+        if (isOptional) {
+            note("    -> Optional injection for: " + element.getSimpleName());
+        }
+        
+        // Check if this is an Optional<T> type
+        OptionalInfo optionalInfo = checkForOptionalWrapper(typeMirror);
+        if (optionalInfo != null) {
+            note("    -> Optional<T> wrapper injection for: " + optionalInfo.actualTypeName);
+            return new Dependency(
+                typeName, typeDescriptor, qualifier.orElse(null),
+                false, isLazy, isOptional, true,
+                optionalInfo.actualTypeName, optionalInfo.actualTypeDescriptor
+            );
+        }
+        
         // Check if this is a Provider<T>
         ProviderInfo providerInfo = checkForProvider(typeMirror);
         if (providerInfo != null) {
             note("    -> Provider injection for: " + providerInfo.actualTypeName);
             return new Dependency(
                 typeName, typeDescriptor, qualifier.orElse(null),
-                true, isLazy,
+                true, isLazy, isOptional, false,
                 providerInfo.actualTypeName, providerInfo.actualTypeDescriptor
             );
         }
         
         return new Dependency(typeName, typeDescriptor, qualifier.orElse(null),
-                false, isLazy, typeName, typeDescriptor);
+                false, isLazy, isOptional, false, typeName, typeDescriptor);
     }
     
     /**
@@ -630,6 +654,47 @@ public class VeldProcessor extends AbstractProcessor {
         final String actualTypeDescriptor;
         
         ProviderInfo(String actualTypeName, String actualTypeDescriptor) {
+            this.actualTypeName = actualTypeName;
+            this.actualTypeDescriptor = actualTypeDescriptor;
+        }
+    }
+    
+    /**
+     * Checks if a type is java.util.Optional.
+     * Returns the actual type T from Optional<T>, or null if not an Optional.
+     */
+    private OptionalInfo checkForOptionalWrapper(TypeMirror typeMirror) {
+        if (typeMirror.getKind() != TypeKind.DECLARED) {
+            return null;
+        }
+        
+        DeclaredType declaredType = (DeclaredType) typeMirror;
+        TypeElement typeElement = (TypeElement) declaredType.asElement();
+        String optionalTypeName = typeElement.getQualifiedName().toString();
+        
+        // Check for java.util.Optional
+        if (!"java.util.Optional".equals(optionalTypeName)) {
+            return null;
+        }
+        
+        // Get the type argument T from Optional<T>
+        List<? extends TypeMirror> typeArgs = declaredType.getTypeArguments();
+        if (typeArgs.isEmpty()) {
+            return null; // Raw Optional type, not supported
+        }
+        
+        TypeMirror actualType = typeArgs.get(0);
+        String actualTypeName = getTypeName(actualType);
+        String actualTypeDescriptor = getTypeDescriptor(actualType);
+        
+        return new OptionalInfo(actualTypeName, actualTypeDescriptor);
+    }
+    
+    private static class OptionalInfo {
+        final String actualTypeName;
+        final String actualTypeDescriptor;
+        
+        OptionalInfo(String actualTypeName, String actualTypeDescriptor) {
             this.actualTypeName = actualTypeName;
             this.actualTypeDescriptor = actualTypeDescriptor;
         }
