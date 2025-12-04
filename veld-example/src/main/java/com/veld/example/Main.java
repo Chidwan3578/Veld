@@ -6,6 +6,7 @@ import com.veld.example.aop.PerformanceAspect;
 import com.veld.example.aop.ProductService;
 import com.veld.example.events.NotificationEvent;
 import com.veld.example.events.OrderCreatedEvent;
+import com.veld.example.lifecycle.*;
 import com.veld.aop.InterceptorRegistry;
 import com.veld.aop.interceptor.LoggingInterceptor;
 import com.veld.aop.interceptor.TimingInterceptor;
@@ -15,6 +16,7 @@ import com.veld.aop.proxy.ProxyFactory;
 import com.veld.runtime.Provider;
 import com.veld.runtime.VeldContainer;
 import com.veld.runtime.event.EventBus;
+import com.veld.runtime.lifecycle.LifecycleProcessor;
 
 import java.util.Arrays;
 
@@ -61,6 +63,14 @@ import java.util.Arrays;
  *     - @Interceptor and @AroundInvoke
  *     - Built-in interceptors: @Logged, @Timed, @Validated, @Transactional
  *     - ASM bytecode proxy generation
+ * 18. Advanced Lifecycle Management
+ *     - SmartLifecycle interface (phase-ordered start/stop)
+ *     - InitializingBean / DisposableBean interfaces
+ *     - BeanPostProcessor for custom bean modification
+ *     - @PostInitialize (after all beans ready)
+ *     - @OnStart / @OnStop for application lifecycle
+ *     - @DependsOn for explicit initialization order
+ *     - Lifecycle events: ContextRefreshed, Started, Stopped, Closed
  * 
  * Simple API: Just create a new VeldContainer() - that's it!
  * All bytecode generation happens at compile-time using ASM.
@@ -145,7 +155,12 @@ public class Main {
             demonstrateAop();
             
             System.out.println("\n══════════════════════════════════════════════════════════");
-            System.out.println("14. SERVICE USAGE");
+            System.out.println("14. ADVANCED LIFECYCLE MANAGEMENT");
+            System.out.println("══════════════════════════════════════════════════════════");
+            demonstrateAdvancedLifecycle();
+            
+            System.out.println("\n══════════════════════════════════════════════════════════");
+            System.out.println("15. SERVICE USAGE");
             System.out.println("══════════════════════════════════════════════════════════");
             demonstrateServiceUsage(container);
             
@@ -780,6 +795,134 @@ public class Main {
         PerformanceAspect.clearStatistics();
         TimingInterceptor.clearStatistics();
         registry.clear();
+    }
+    
+    /**
+     * Demonstrates advanced lifecycle management features.
+     */
+    private static void demonstrateAdvancedLifecycle() {
+        System.out.println("\n→ Advanced Lifecycle Management Demo");
+        System.out.println("  Complete control over bean initialization, startup, and shutdown.");
+        
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Creating LifecycleProcessor:");
+        System.out.println("══════════════════════════════════════════════════════════");
+        
+        LifecycleProcessor lifecycleProcessor = new LifecycleProcessor();
+        EventBus eventBus = EventBus.getInstance();
+        lifecycleProcessor.setEventBus(eventBus);
+        
+        // Register BeanPostProcessor
+        System.out.println("\n→ Registering BeanPostProcessor:");
+        LoggingBeanPostProcessor postProcessor = new LoggingBeanPostProcessor();
+        lifecycleProcessor.addBeanPostProcessor(postProcessor);
+        System.out.println("  LoggingBeanPostProcessor registered");
+        
+        // Create and register lifecycle beans
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Registering Lifecycle Beans:");
+        System.out.println("══════════════════════════════════════════════════════════");
+        
+        // SmartLifecycle - DatabaseConnection
+        DatabaseConnection dbConnection = new DatabaseConnection();
+        lifecycleProcessor.registerBean("databaseConnection", dbConnection);
+        System.out.println("  Registered: databaseConnection (SmartLifecycle, phase=-1000)");
+        
+        // @PostInitialize - CacheWarmer
+        CacheWarmer cacheWarmer = new CacheWarmer();
+        lifecycleProcessor.registerBean("cacheWarmer", cacheWarmer);
+        System.out.println("  Registered: cacheWarmer (@PostInitialize, @DependsOn)");
+        
+        // @OnStart/@OnStop - ScheduledTaskRunner
+        ScheduledTaskRunner taskRunner = new ScheduledTaskRunner();
+        lifecycleProcessor.registerBean("scheduledTaskRunner", taskRunner);
+        System.out.println("  Registered: scheduledTaskRunner (@OnStart, @OnStop)");
+        
+        // InitializingBean/DisposableBean - MetricsService
+        MetricsService metricsService = new MetricsService();
+        lifecycleProcessor.registerBean("metricsService", metricsService);
+        System.out.println("  Registered: metricsService (InitializingBean, DisposableBean)");
+        
+        // LifecycleEventListener
+        LifecycleEventListener eventListener = new LifecycleEventListener();
+        eventBus.register(eventListener);
+        System.out.println("  Registered: lifecycleEventListener (@Subscribe for lifecycle events)");
+        
+        // Apply post-processing and initialization
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Post-Processing Beans:");
+        System.out.println("══════════════════════════════════════════════════════════");
+        
+        lifecycleProcessor.postProcessBeforeInitialization(dbConnection, "databaseConnection");
+        lifecycleProcessor.initializeBean(metricsService, "metricsService");
+        lifecycleProcessor.postProcessAfterInitialization(dbConnection, "databaseConnection");
+        lifecycleProcessor.postProcessAfterInitialization(metricsService, "metricsService");
+        
+        // Simulate container refresh
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Container Refresh (triggers @PostInitialize):");
+        System.out.println("══════════════════════════════════════════════════════════");
+        lifecycleProcessor.onRefresh(150); // Simulate 150ms init time
+        
+        // Start lifecycle
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Starting Lifecycle (triggers SmartLifecycle.start() and @OnStart):");
+        System.out.println("══════════════════════════════════════════════════════════");
+        lifecycleProcessor.start();
+        
+        // Simulate application running
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Application Running:");
+        System.out.println("══════════════════════════════════════════════════════════");
+        System.out.println("  LifecycleProcessor running: " + lifecycleProcessor.isRunning());
+        System.out.println("  DatabaseConnection running: " + dbConnection.isRunning());
+        System.out.println("  Cache warmed: " + cacheWarmer.isCacheWarmed());
+        
+        // Use MetricsService
+        System.out.println("\n→ Using MetricsService:");
+        metricsService.recordRequest(true);
+        metricsService.recordRequest(true);
+        metricsService.recordRequest(false);
+        metricsService.recordCacheAccess(true);
+        metricsService.recordCacheAccess(true);
+        metricsService.recordCacheAccess(false);
+        System.out.println("  Recorded 3 requests (2 success, 1 error)");
+        System.out.println("  Recorded 3 cache accesses (2 hits, 1 miss)");
+        
+        // Wait for scheduled tasks
+        System.out.println("\n→ Waiting for scheduled tasks (1 second)...");
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        System.out.println("  Tasks executed: " + taskRunner.getTaskCount());
+        
+        // Show statistics
+        System.out.println("\n→ LifecycleProcessor Statistics:");
+        System.out.println("  " + lifecycleProcessor.getStatistics());
+        
+        // Stop lifecycle
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Stopping Lifecycle (triggers @OnStop and SmartLifecycle.stop()):");
+        System.out.println("══════════════════════════════════════════════════════════");
+        lifecycleProcessor.stop();
+        
+        // Destroy beans
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("→ Destroying Beans (triggers DisposableBean.destroy()):");
+        System.out.println("══════════════════════════════════════════════════════════");
+        lifecycleProcessor.destroy();
+        
+        System.out.println("\n→ Advanced Lifecycle Features Demonstrated:");
+        System.out.println("  - SmartLifecycle: Phase-ordered startup/shutdown (DatabaseConnection)");
+        System.out.println("  - InitializingBean.afterPropertiesSet(): Post-injection init (MetricsService)");
+        System.out.println("  - DisposableBean.destroy(): Cleanup on shutdown (MetricsService)");
+        System.out.println("  - BeanPostProcessor: Before/after init hooks (LoggingBeanPostProcessor)");
+        System.out.println("  - @PostInitialize: After all beans ready (CacheWarmer)");
+        System.out.println("  - @OnStart/@OnStop: Application start/stop hooks (ScheduledTaskRunner)");
+        System.out.println("  - @DependsOn: Explicit initialization order (CacheWarmer depends on DB)");
+        System.out.println("  - Lifecycle Events: ContextRefreshed, Started, Stopped, Closed");
     }
     
     /**
