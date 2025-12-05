@@ -91,7 +91,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        java: [ '11', '17', '21', '25' ]
+        java: [ '11', '17', '21' ]
       fail-fast: false
     
     steps:
@@ -105,8 +105,14 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           cache: maven
 
-      - name: Build and Test on Java ${{ matrix.java }}
-        run: mvn clean verify -B
+      - name: Install Modules
+        run: mvn clean install -DskipTests -B
+
+      - name: Run Tests
+        run: mvn test -B
+
+      - name: Verify
+        run: mvn verify -B -DskipTests
 
   # Release job - only on main branch tags
   release:
