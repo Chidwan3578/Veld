@@ -182,9 +182,8 @@
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>
-                                        <!-- TODO: Increase thresholds as more tests are added -->
-                                        <!-- Current coverage: runtime=59%/48%, processor=13%/12% -->
-                                        <!-- Target: LINE=0.90, BRANCH=0.80 -->
+                                        <!-- Default thresholds - modules can override -->
+                                        <!-- veld-runtime: 80%/70% (configured in its pom.xml) -->
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
