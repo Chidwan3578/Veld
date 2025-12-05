@@ -1,5 +1,6 @@
 package com.veld.runtime;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +20,8 @@ import static org.mockito.ArgumentMatchers.any;
 @DisplayName("VeldContainer Tests")
 class VeldContainerTest {
     
+    private AutoCloseable mocks;
+    
     @Mock
     private ComponentRegistry mockRegistry;
     
@@ -29,8 +32,15 @@ class VeldContainerTest {
     
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        mocks = MockitoAnnotations.openMocks(this);
         when(mockRegistry.getAllFactories()).thenReturn(List.of());
+    }
+    
+    @AfterEach
+    void tearDown() throws Exception {
+        if (mocks != null) {
+            mocks.close();
+        }
     }
     
     // Test service for mocking

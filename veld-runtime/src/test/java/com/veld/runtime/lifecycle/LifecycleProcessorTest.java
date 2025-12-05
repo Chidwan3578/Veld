@@ -5,8 +5,9 @@ import com.veld.annotation.OnStop;
 import com.veld.annotation.PostInitialize;
 import com.veld.runtime.event.EventBus;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.*;
  * Comprehensive tests for LifecycleProcessor.
  */
 @DisplayName("LifecycleProcessor Tests")
+@ExtendWith(MockitoExtension.class)
 class LifecycleProcessorTest {
     
     private LifecycleProcessor processor;
@@ -29,7 +31,6 @@ class LifecycleProcessorTest {
     
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
         processor = new LifecycleProcessor();
         processor.setEventBus(mockEventBus);
     }
