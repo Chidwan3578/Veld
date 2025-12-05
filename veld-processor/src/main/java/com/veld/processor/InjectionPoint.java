@@ -14,16 +14,32 @@ public final class InjectionPoint {
         METHOD
     }
     
+    /**
+     * Represents the visibility/access level of a field or method.
+     */
+    public enum Visibility {
+        PRIVATE,
+        PACKAGE_PRIVATE,
+        PROTECTED,
+        PUBLIC
+    }
+    
     private final Type type;
     private final String name;
     private final String descriptor;
     private final List<Dependency> dependencies;
+    private final Visibility visibility;
     
     public InjectionPoint(Type type, String name, String descriptor, List<Dependency> dependencies) {
+        this(type, name, descriptor, dependencies, Visibility.PACKAGE_PRIVATE);
+    }
+    
+    public InjectionPoint(Type type, String name, String descriptor, List<Dependency> dependencies, Visibility visibility) {
         this.type = type;
         this.name = name;
         this.descriptor = descriptor;
         this.dependencies = List.copyOf(dependencies);
+        this.visibility = visibility;
     }
     
     public Type getType() {
@@ -40,6 +56,18 @@ public final class InjectionPoint {
     
     public List<Dependency> getDependencies() {
         return dependencies;
+    }
+    
+    public Visibility getVisibility() {
+        return visibility;
+    }
+    
+    /**
+     * Returns true if this field is private and requires a synthetic setter.
+     * Only applicable for FIELD type injection points.
+     */
+    public boolean requiresSyntheticSetter() {
+        return type == Type.FIELD && visibility == Visibility.PRIVATE;
     }
     
     /**

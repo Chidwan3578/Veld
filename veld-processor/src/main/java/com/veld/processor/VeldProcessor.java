@@ -479,23 +479,26 @@ public class VeldProcessor extends AbstractProcessor {
                 if (field.getModifiers().contains(Modifier.STATIC)) {
                     throw new ProcessingException("@Value cannot be applied to static fields: " + field.getSimpleName());
                 }
-                if (field.getModifiers().contains(Modifier.PRIVATE)) {
-                    throw new ProcessingException("@Value cannot be applied to private fields (use package-private, protected, or public): " + field.getSimpleName());
-                }
                 
                 String typeName = getTypeName(field.asType());
                 String descriptor = getTypeDescriptor(field.asType());
                 String valueExpression = valueAnnotation.value();
+                InjectionPoint.Visibility visibility = getFieldVisibility(field);
                 
                 Dependency dep = Dependency.forValue(typeName, descriptor, valueExpression);
                 
-                note("  -> @Value(\"" + valueExpression + "\") for field: " + field.getSimpleName());
+                if (visibility == InjectionPoint.Visibility.PRIVATE) {
+                    note("  -> @Value(\"" + valueExpression + "\") for private field: " + field.getSimpleName() + " (requires weaving)");
+                } else {
+                    note("  -> @Value(\"" + valueExpression + "\") for field: " + field.getSimpleName());
+                }
                 
                 info.addFieldInjection(new InjectionPoint(
                         InjectionPoint.Type.FIELD,
                         field.getSimpleName().toString(),
                         descriptor,
-                        List.of(dep)));
+                        List.of(dep),
+                        visibility));
                 continue;
             }
             
@@ -510,13 +513,16 @@ public class VeldProcessor extends AbstractProcessor {
             if (field.getModifiers().contains(Modifier.STATIC)) {
                 throw new ProcessingException("@Inject cannot be applied to static fields: " + field.getSimpleName());
             }
-            if (field.getModifiers().contains(Modifier.PRIVATE)) {
-                throw new ProcessingException("@Inject cannot be applied to private fields (use package-private, protected, or public): " + field.getSimpleName());
-            }
+            
+            InjectionPoint.Visibility visibility = getFieldVisibility(field);
             
             // Log which annotation specification is being used
             if (injectSource.isStandard()) {
                 note("  -> Using " + injectSource.getPackageName() + ".Inject for field: " + field.getSimpleName());
+            }
+            
+            if (visibility == InjectionPoint.Visibility.PRIVATE) {
+                note("  -> Private field injection: " + field.getSimpleName() + " (requires veld-weaver plugin)");
             }
             
             Dependency dep = createDependency(field);
@@ -526,7 +532,24 @@ public class VeldProcessor extends AbstractProcessor {
                     InjectionPoint.Type.FIELD, 
                     field.getSimpleName().toString(),
                     descriptor,
-                    List.of(dep)));
+                    List.of(dep),
+                    visibility));
+        }
+    }
+    
+    /**
+     * Determines the visibility of a field.
+     */
+    private InjectionPoint.Visibility getFieldVisibility(VariableElement field) {
+        Set<Modifier> modifiers = field.getModifiers();
+        if (modifiers.contains(Modifier.PRIVATE)) {
+            return InjectionPoint.Visibility.PRIVATE;
+        } else if (modifiers.contains(Modifier.PROTECTED)) {
+            return InjectionPoint.Visibility.PROTECTED;
+        } else if (modifiers.contains(Modifier.PUBLIC)) {
+            return InjectionPoint.Visibility.PUBLIC;
+        } else {
+            return InjectionPoint.Visibility.PACKAGE_PRIVATE;
         }
     }
     
