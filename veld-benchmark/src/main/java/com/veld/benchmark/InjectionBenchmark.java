@@ -77,7 +77,7 @@ public class InjectionBenchmark {
     
     @Benchmark
     public void springSimpleInjection(Blackhole bh) {
-        Service service = springContext.getBean(Service.class);
+        Service service = springContext.getBean("simpleService", Service.class);
         bh.consume(service);
     }
     

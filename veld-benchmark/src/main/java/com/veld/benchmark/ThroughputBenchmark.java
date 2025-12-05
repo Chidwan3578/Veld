@@ -69,7 +69,7 @@ public class ThroughputBenchmark {
     
     @Benchmark
     public void springThroughput(Blackhole bh) {
-        Service service = springContext.getBean(Service.class);
+        Service service = springContext.getBean("simpleService", Service.class);
         bh.consume(service);
     }
     
@@ -97,7 +97,7 @@ public class ThroughputBenchmark {
     @Benchmark
     @Threads(4)
     public void springConcurrentThroughput(Blackhole bh) {
-        Service service = springContext.getBean(Service.class);
+        Service service = springContext.getBean("simpleService", Service.class);
         bh.consume(service);
     }
     
