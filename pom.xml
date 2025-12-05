@@ -12,7 +12,7 @@
     <name>Veld Framework</name>
     <description>Dependency Injection Framework using pure ASM bytecode generation - No Reflection</description>
     <url>https://github.com/yasmramos/Veld</url>
-    
+
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -20,13 +20,13 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
-    
+
     <scm>
         <url>https://github.com/yasmramos/Veld</url>
         <connection>scm:git:git://github.com/yasmramos/Veld.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/yasmramos/Veld.git</developerConnection>
     </scm>
-    
+
     <distributionManagement>
         <repository>
             <id>github</id>
@@ -45,20 +45,24 @@
     </modules>
 
     <properties>
+        <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <asm.version>9.8</asm.version>
+
+        <!-- Dependencies versions -->
         <junit.version>5.11.3</junit.version>
-        <mockito.version>5.14.2</mockito.version>
-        <jacoco.version>0.8.12</jacoco.version>
+        <mockito.version>5.20.0</mockito.version>
+        <bytebuddy.version>1.17.4</bytebuddy.version>
+        <asm.version>9.8</asm.version>
         <javax.inject.version>1</javax.inject.version>
         <jakarta.inject.version>2.0.1</jakarta.inject.version>
+        <jacoco.version>0.8.12</jacoco.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- ASM for bytecode generation -->
+            <!-- ASM -->
             <dependency>
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm</artifactId>
@@ -80,7 +84,19 @@
                 <version>${asm.version}</version>
             </dependency>
 
-            <!-- Internal modules -->
+            <!-- ByteBuddy (explicit for Java 25 support) -->
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${bytebuddy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy-agent</artifactId>
+                <version>${bytebuddy.version}</version>
+            </dependency>
+
+            <!-- Veld modules -->
             <dependency>
                 <groupId>com.veld</groupId>
                 <artifactId>veld-annotations</artifactId>
@@ -97,14 +113,12 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- JSR-330 Dependency Injection (javax.inject) -->
+            <!-- JSR-330 -->
             <dependency>
                 <groupId>javax.inject</groupId>
                 <artifactId>javax.inject</artifactId>
                 <version>${javax.inject.version}</version>
             </dependency>
-            
-            <!-- Jakarta Dependency Injection (jakarta.inject) -->
             <dependency>
                 <groupId>jakarta.inject</groupId>
                 <artifactId>jakarta.inject-api</artifactId>
@@ -134,35 +148,30 @@
     </dependencyManagement>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.11.0</version>
-                    <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.2.2</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.jacoco</groupId>
-                    <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>${jacoco.version}</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        
         <plugins>
-            <!-- JaCoCo Code Coverage -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <argLine>@{argLine} -Dnet.bytebuddy.experimental=true --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens java.base/java.util.concurrent=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -179,7 +188,6 @@
                     </execution>
                     <execution>
                         <id>check</id>
-                        <phase>verify</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -188,8 +196,6 @@
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>
-                                        <!-- Default thresholds - modules can override -->
-                                        <!-- veld-runtime: 80%/70% (configured in its pom.xml) -->
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
@@ -219,25 +225,4 @@
             </plugin>
         </plugins>
     </build>
-    
-    <profiles>
-        <!-- Profile for Java 17+ to add required module opens for Mockito/ByteBuddy -->
-        <profile>
-            <id>java17plus-test-args</id>
-            <activation>
-                <jdk>[17,)</jdk>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <argLine>@{argLine} --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens java.base/java.util.concurrent=ALL-UNNAMED</argLine>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
