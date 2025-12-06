@@ -2,25 +2,20 @@ package com.veld.processor;
 
 import com.veld.runtime.Scope;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Generates the Veld bootstrap class as bytecode using ASM.
- * This class provides ULTRA-FAST static access to singletons - as fast as Dagger.
+ * Uses <clinit> initialization for MAXIMUM performance - as fast as Dagger.
  * 
- * Generated class: com.veld.generated.Veld
- * 
- * Usage:
- *   // Ultra-fast static access (as fast as Dagger):
- *   MyService service = Veld.myService();
- *   
- *   // Or use container API:
- *   VeldContainer container = Veld.createContainer();
+ * Optimizations:
+ * - final static fields (enables JIT inlining)
+ * - <clinit> initialization (JVM-guaranteed thread safety, zero runtime overhead)
+ * - Topological sorting (correct dependency order)
+ * - invokespecial for constructors (direct call, no virtual dispatch)
  */
 public class VeldBootstrapGenerator implements Opcodes {
     
@@ -41,36 +36,42 @@ public class VeldBootstrapGenerator implements Opcodes {
         // public final class Veld
         cw.visit(V17, ACC_PUBLIC | ACC_FINAL, VELD_CLASS, null, "java/lang/Object", null);
         
-        // Generate static volatile fields for each singleton
+        // Separate singletons from prototypes
+        List<ComponentInfo> singletons = new ArrayList<>();
+        List<ComponentInfo> prototypes = new ArrayList<>();
         for (ComponentInfo comp : components) {
             if (comp.getScope() == Scope.SINGLETON) {
-                cw.visitField(
-                    ACC_PRIVATE | ACC_STATIC | ACC_VOLATILE,
-                    getFieldName(comp),
-                    "L" + comp.getInternalName() + ";",
-                    null,
-                    null
-                ).visitEnd();
+                singletons.add(comp);
+            } else {
+                prototypes.add(comp);
             }
         }
         
-        // Lock object for synchronization
-        cw.visitField(ACC_PRIVATE | ACC_STATIC | ACC_FINAL, "LOCK", 
-            "Ljava/lang/Object;", null, null).visitEnd();
+        // Generate FINAL static fields for singletons (enables JIT optimization)
+        for (ComponentInfo comp : singletons) {
+            cw.visitField(
+                ACC_PRIVATE | ACC_STATIC | ACC_FINAL,
+                getFieldName(comp),
+                "L" + comp.getInternalName() + ";",
+                null,
+                null
+            ).visitEnd();
+        }
         
-        // Static initializer for LOCK
-        generateStaticInit(cw);
+        // Generate <clinit> with topologically sorted initialization
+        generateStaticInit(cw, singletons);
         
         // Private constructor
         generatePrivateConstructor(cw);
         
-        // Generate getter method for each component
-        for (ComponentInfo comp : components) {
-            if (comp.getScope() == Scope.SINGLETON) {
-                generateSingletonGetter(cw, comp);
-            } else {
-                generatePrototypeGetter(cw, comp);
-            }
+        // Generate ultra-fast getter for each singleton (just getstatic + areturn)
+        for (ComponentInfo comp : singletons) {
+            generateSingletonGetter(cw, comp);
+        }
+        
+        // Generate prototype getters
+        for (ComponentInfo comp : prototypes) {
+            generatePrototypeGetter(cw, comp);
         }
         
         // Container factory methods
@@ -81,16 +82,109 @@ public class VeldBootstrapGenerator implements Opcodes {
         return cw.toByteArray();
     }
     
-    private void generateStaticInit(ClassWriter cw) {
+    /**
+     * Generates <clinit> that initializes all singletons in topological order.
+     * JVM guarantees thread-safe initialization - no synchronization needed at runtime.
+     */
+    private void generateStaticInit(ClassWriter cw, List<ComponentInfo> singletons) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
-        mv.visitTypeInsn(NEW, "java/lang/Object");
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        mv.visitFieldInsn(PUTSTATIC, VELD_CLASS, "LOCK", "Ljava/lang/Object;");
+        
+        // Topologically sort singletons so dependencies are initialized first
+        List<ComponentInfo> sorted = topologicalSort(singletons);
+        
+        // Initialize each singleton in order
+        for (ComponentInfo comp : sorted) {
+            String fieldName = getFieldName(comp);
+            String fieldType = "L" + comp.getInternalName() + ";";
+            
+            // new Component(dep1(), dep2(), ...)
+            mv.visitTypeInsn(NEW, comp.getInternalName());
+            mv.visitInsn(DUP);
+            
+            // Push constructor arguments
+            StringBuilder constructorDesc = new StringBuilder("(");
+            InjectionPoint constructor = comp.getConstructorInjection();
+            List<InjectionPoint.Dependency> deps = constructor != null ? 
+                constructor.getDependencies() : Collections.emptyList();
+            
+            for (InjectionPoint.Dependency dep : deps) {
+                String depType = dep.getTypeName().replace('.', '/');
+                constructorDesc.append("L").append(depType).append(";");
+                
+                ComponentInfo depComp = findComponentByType(depType);
+                if (depComp != null && depComp.getScope() == Scope.SINGLETON) {
+                    // Read from already-initialized field
+                    mv.visitFieldInsn(GETSTATIC, VELD_CLASS, getFieldName(depComp), 
+                        "L" + depComp.getInternalName() + ";");
+                } else if (depComp != null) {
+                    // Prototype - call getter
+                    mv.visitMethodInsn(INVOKESTATIC, VELD_CLASS, getMethodName(depComp),
+                        "()L" + depComp.getInternalName() + ";", false);
+                } else {
+                    mv.visitInsn(ACONST_NULL);
+                }
+            }
+            constructorDesc.append(")V");
+            
+            // invokespecial for direct constructor call
+            mv.visitMethodInsn(INVOKESPECIAL, comp.getInternalName(), "<init>", 
+                constructorDesc.toString(), false);
+            
+            // Store in field
+            mv.visitFieldInsn(PUTSTATIC, VELD_CLASS, fieldName, fieldType);
+        }
+        
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+    }
+    
+    /**
+     * Topological sort: dependencies before dependents.
+     */
+    private List<ComponentInfo> topologicalSort(List<ComponentInfo> singletons) {
+        Map<String, ComponentInfo> byType = new HashMap<>();
+        for (ComponentInfo comp : singletons) {
+            byType.put(comp.getInternalName(), comp);
+            for (String iface : comp.getImplementedInterfacesInternal()) {
+                byType.put(iface, comp);
+            }
+        }
+        
+        Set<String> visited = new HashSet<>();
+        Set<String> visiting = new HashSet<>();
+        List<ComponentInfo> result = new ArrayList<>();
+        
+        for (ComponentInfo comp : singletons) {
+            visit(comp, byType, visited, visiting, result);
+        }
+        
+        return result;
+    }
+    
+    private void visit(ComponentInfo comp, Map<String, ComponentInfo> byType,
+                       Set<String> visited, Set<String> visiting, List<ComponentInfo> result) {
+        String key = comp.getInternalName();
+        if (visited.contains(key)) return;
+        if (visiting.contains(key)) return; // Circular dependency
+        
+        visiting.add(key);
+        
+        InjectionPoint constructor = comp.getConstructorInjection();
+        if (constructor != null) {
+            for (InjectionPoint.Dependency dep : constructor.getDependencies()) {
+                String depType = dep.getTypeName().replace('.', '/');
+                ComponentInfo depComp = byType.get(depType);
+                if (depComp != null && depComp.getScope() == Scope.SINGLETON) {
+                    visit(depComp, byType, visited, visiting, result);
+                }
+            }
+        }
+        
+        visiting.remove(key);
+        visited.add(key);
+        result.add(comp);
     }
     
     private void generatePrivateConstructor(ClassWriter cw) {
@@ -104,21 +198,11 @@ public class VeldBootstrapGenerator implements Opcodes {
     }
     
     /**
-     * Generates ultra-fast singleton getter with double-check locking.
+     * Generates ULTRA-FAST singleton getter - just 2 bytecode instructions.
      * 
-     * Generated code equivalent:
-     * public static MyService myService() {
-     *     MyService local = myService;
-     *     if (local == null) {
-     *         synchronized (LOCK) {
-     *             local = myService;
-     *             if (local == null) {
-     *                 myService = local = new MyService(dependency1(), dependency2());
-     *             }
-     *         }
-     *     }
-     *     return local;
-     * }
+     * Generated bytecode:
+     *   getstatic  Veld._myService : MyService
+     *   areturn
      */
     private void generateSingletonGetter(ClassWriter cw, ComponentInfo comp) {
         String methodName = getMethodName(comp);
@@ -126,7 +210,7 @@ public class VeldBootstrapGenerator implements Opcodes {
         String returnType = "L" + comp.getInternalName() + ";";
         
         MethodVisitor mv = cw.visitMethod(
-            ACC_PUBLIC | ACC_STATIC,
+            ACC_PUBLIC | ACC_STATIC | ACC_FINAL,
             methodName,
             "()" + returnType,
             null,
@@ -134,95 +218,8 @@ public class VeldBootstrapGenerator implements Opcodes {
         );
         mv.visitCode();
         
-        // local = field
+        // Just read the field and return - 2 instructions, same as Dagger
         mv.visitFieldInsn(GETSTATIC, VELD_CLASS, fieldName, returnType);
-        mv.visitVarInsn(ASTORE, 0);
-        
-        // if (local == null)
-        mv.visitVarInsn(ALOAD, 0);
-        Label notNullLabel = new Label();
-        mv.visitJumpInsn(IFNONNULL, notNullLabel);
-        
-        // synchronized (LOCK) {
-        mv.visitFieldInsn(GETSTATIC, VELD_CLASS, "LOCK", "Ljava/lang/Object;");
-        mv.visitInsn(DUP);
-        mv.visitVarInsn(ASTORE, 1);
-        mv.visitInsn(MONITORENTER);
-        
-        Label tryStart = new Label();
-        Label tryEnd = new Label();
-        Label catchHandler = new Label();
-        mv.visitTryCatchBlock(tryStart, tryEnd, catchHandler, null);
-        
-        mv.visitLabel(tryStart);
-        
-        // local = field (double-check)
-        mv.visitFieldInsn(GETSTATIC, VELD_CLASS, fieldName, returnType);
-        mv.visitVarInsn(ASTORE, 0);
-        
-        // if (local == null)
-        mv.visitVarInsn(ALOAD, 0);
-        Label alreadyCreated = new Label();
-        mv.visitJumpInsn(IFNONNULL, alreadyCreated);
-        
-        // Create instance: new Component(dependencies...)
-        mv.visitTypeInsn(NEW, comp.getInternalName());
-        mv.visitInsn(DUP);
-        
-        // Push constructor arguments
-        StringBuilder constructorDesc = new StringBuilder("(");
-        InjectionPoint constructor = comp.getConstructorInjection();
-        List<InjectionPoint.Dependency> deps = constructor != null ? constructor.getDependencies() : Collections.emptyList();
-        for (InjectionPoint.Dependency dep : deps) {
-            String depType = dep.getTypeName().replace('.', '/');
-            constructorDesc.append("L").append(depType).append(";");
-            
-            // Call the getter for this dependency
-            ComponentInfo depComp = findComponentByType(depType);
-            if (depComp != null) {
-                String depMethod = getMethodName(depComp);
-                String depReturnType = "L" + depComp.getInternalName() + ";";
-                mv.visitMethodInsn(INVOKESTATIC, VELD_CLASS, depMethod, "()" + depReturnType, false);
-            } else {
-                // Dependency not found - this would be a compile error
-                mv.visitInsn(ACONST_NULL);
-            }
-        }
-        constructorDesc.append(")V");
-        
-        mv.visitMethodInsn(INVOKESPECIAL, comp.getInternalName(), "<init>", 
-            constructorDesc.toString(), false);
-        mv.visitInsn(DUP);
-        mv.visitVarInsn(ASTORE, 0);
-        
-        // field = local
-        mv.visitFieldInsn(PUTSTATIC, VELD_CLASS, fieldName, returnType);
-        
-        mv.visitLabel(alreadyCreated);
-        mv.visitFrame(F_FULL, 2, new Object[]{comp.getInternalName(), "java/lang/Object"}, 0, new Object[]{});
-        
-        // MONITOREXIT
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitInsn(MONITOREXIT);
-        mv.visitLabel(tryEnd);
-        Label afterSync = new Label();
-        mv.visitJumpInsn(GOTO, afterSync);
-        
-        // Exception handler
-        mv.visitLabel(catchHandler);
-        mv.visitFrame(F_FULL, 2, new Object[]{comp.getInternalName(), "java/lang/Object"}, 1, new Object[]{"java/lang/Throwable"});
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitInsn(MONITOREXIT);
-        mv.visitInsn(ATHROW);
-        
-        mv.visitLabel(afterSync);
-        mv.visitFrame(F_FULL, 1, new Object[]{comp.getInternalName()}, 0, new Object[]{});
-        
-        mv.visitLabel(notNullLabel);
-        mv.visitFrame(F_SAME, 0, null, 0, null);
-        
-        // return local
-        mv.visitVarInsn(ALOAD, 0);
         mv.visitInsn(ARETURN);
         
         mv.visitMaxs(0, 0);
@@ -242,22 +239,22 @@ public class VeldBootstrapGenerator implements Opcodes {
         );
         mv.visitCode();
         
-        // return new Component(dependencies...)
         mv.visitTypeInsn(NEW, comp.getInternalName());
         mv.visitInsn(DUP);
         
         StringBuilder constructorDesc = new StringBuilder("(");
         InjectionPoint constructor = comp.getConstructorInjection();
-        List<InjectionPoint.Dependency> deps = constructor != null ? constructor.getDependencies() : Collections.emptyList();
+        List<InjectionPoint.Dependency> deps = constructor != null ? 
+            constructor.getDependencies() : Collections.emptyList();
+        
         for (InjectionPoint.Dependency dep : deps) {
             String depType = dep.getTypeName().replace('.', '/');
             constructorDesc.append("L").append(depType).append(";");
             
             ComponentInfo depComp = findComponentByType(depType);
             if (depComp != null) {
-                String depMethod = getMethodName(depComp);
-                String depReturnType = "L" + depComp.getInternalName() + ";";
-                mv.visitMethodInsn(INVOKESTATIC, VELD_CLASS, depMethod, "()" + depReturnType, false);
+                mv.visitMethodInsn(INVOKESTATIC, VELD_CLASS, getMethodName(depComp),
+                    "()L" + depComp.getInternalName() + ";", false);
             } else {
                 mv.visitInsn(ACONST_NULL);
             }
@@ -277,7 +274,6 @@ public class VeldBootstrapGenerator implements Opcodes {
             if (comp.getInternalName().equals(internalName)) {
                 return comp;
             }
-            // Check interfaces
             for (String iface : comp.getImplementedInterfacesInternal()) {
                 if (iface.equals(internalName)) {
                     return comp;
@@ -293,7 +289,6 @@ public class VeldBootstrapGenerator implements Opcodes {
         if (lastDot >= 0) {
             simpleName = simpleName.substring(lastDot + 1);
         }
-        // Decapitalize
         if (simpleName.length() > 1 && Character.isUpperCase(simpleName.charAt(1))) {
             return simpleName;
         }
