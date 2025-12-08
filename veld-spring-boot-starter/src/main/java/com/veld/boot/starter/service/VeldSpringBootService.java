@@ -161,7 +161,7 @@ public class VeldSpringBootService implements InitializingBean, DisposableBean, 
         if (container == null) {
             throw new IllegalStateException("Veld Container is not initialized");
         }
-        return container.getBean(name);
+        return container.get(name);
     }
 
     /**
@@ -171,7 +171,7 @@ public class VeldSpringBootService implements InitializingBean, DisposableBean, 
         if (container == null) {
             throw new IllegalStateException("Veld Container is not initialized");
         }
-        return container.getBean(type);
+        return container.get(type);
     }
 
     /**
@@ -181,7 +181,7 @@ public class VeldSpringBootService implements InitializingBean, DisposableBean, 
         if (container == null) {
             throw new IllegalStateException("Veld Container is not initialized");
         }
-        return container.getBean(name, type);
+        return container.get(type, name);
     }
 
     /**
