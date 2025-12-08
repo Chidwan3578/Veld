@@ -16,12 +16,11 @@ public interface ComponentFactory<T> {
 
     /**
      * Creates a new instance of the component.
-     * Dependencies are resolved through the provided container.
+     * Dependencies are resolved through the generated Veld class.
      *
-     * @param container the container to resolve dependencies from
      * @return a new instance of the component
      */
-    T create(VeldContainer container);
+    T create();
 
     /**
      * Returns the type of component this factory creates.

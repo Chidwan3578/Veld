@@ -12,7 +12,7 @@ import java.util.*;
  * Generates the Veld bootstrap class as bytecode using ASM.
  * 
  * This is THE container - ultra-fast with complete functionality.
- * No separate VeldContainer needed.
+ * No separate Veld needed.
  * 
  * Optimizations:
  * - final static fields (enables JIT inlining)

@@ -930,7 +930,7 @@ Veld/
 │   ├── src/main/java/
 │   │   ├── module-info.java    # JPMS module descriptor
 │   │   └── com/veld/runtime/
-│   │       ├── VeldContainer.java
+│   │       ├── Veld.java
 │   │       ├── ComponentRegistry.java
 │   │       ├── Provider.java
 │   │       └── event/

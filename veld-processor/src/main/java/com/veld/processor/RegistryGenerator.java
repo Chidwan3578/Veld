@@ -46,7 +46,7 @@ import static org.objectweb.asm.Opcodes.*;
  *         return idx != null ? idx : -1;
  *     }
  *     
- *     public Object create(int index, VeldContainer container) {
+ *     public Object create(int index, Veld container) {
  *         switch (index) {
  *             case 0: return factories[0].create(container);
  *             // ...
@@ -60,7 +60,7 @@ public final class RegistryGenerator {
     private static final String REGISTRY_NAME = "com/veld/generated/VeldRegistry";
     private static final String COMPONENT_REGISTRY = "com/veld/runtime/ComponentRegistry";
     private static final String COMPONENT_FACTORY = "com/veld/runtime/ComponentFactory";
-    private static final String VELD_CONTAINER = "com/veld/runtime/VeldContainer";
+    private static final String VELD_CLASS = "com/veld/generated/Veld";
     private static final String VELD_EXCEPTION = "com/veld/runtime/VeldException";
     private static final String SCOPE = "com/veld/runtime/Scope";
     private static final String OBJECT = "java/lang/Object";
@@ -514,8 +514,8 @@ public final class RegistryGenerator {
     
     private void generateCreate(ClassWriter cw) {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "create",
-                "(IL" + VELD_CONTAINER + ";)L" + OBJECT + ";",
-                "<T:L" + OBJECT + ";>(IL" + VELD_CONTAINER + ";)TT;", null);
+                "(I)L" + OBJECT + ";",
+                "<T:L" + OBJECT + ";>(I)TT;", null);
         mv.visitCode();
         
         if (components.isEmpty()) {
@@ -526,14 +526,13 @@ public final class RegistryGenerator {
                     "(L" + STRING + ";)V", false);
             mv.visitInsn(ATHROW);
         } else {
-            // Use factories[index].create(container)
+            // Use factories[index].create()
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, REGISTRY_NAME, "factories", "[L" + COMPONENT_FACTORY + ";");
             mv.visitVarInsn(ILOAD, 1);
             mv.visitInsn(AALOAD);
-            mv.visitVarInsn(ALOAD, 2);
             mv.visitMethodInsn(INVOKEINTERFACE, COMPONENT_FACTORY, "create",
-                    "(L" + VELD_CONTAINER + ";)L" + OBJECT + ";", true);
+                    "()L" + OBJECT + ";", true);
             mv.visitInsn(ARETURN);
         }
         

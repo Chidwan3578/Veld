@@ -222,27 +222,28 @@ class VeldBootstrapGeneratorTest {
         }
 
         @Test
-        @DisplayName("createContainer should return VeldContainer")
-        void createContainerShouldReturnVeldContainer() {
+        @DisplayName("should generate get method for type lookup")
+        void shouldGenerateGetMethod() {
             VeldBootstrapGenerator generator = new VeldBootstrapGenerator(java.util.Collections.emptyList());
             byte[] bytecode = generator.generate();
             ClassNode cn = parseClass(bytecode);
             
-            MethodNode method = getMethod(cn, "createContainer");
-            assertNotNull(method);
-            assertEquals("()Lcom/veld/runtime/VeldContainer;", method.desc);
+            MethodNode method = getMethod(cn, "get");
+            assertNotNull(method, "Should have get method");
+            assertTrue((method.access & Opcodes.ACC_PUBLIC) != 0, "Should be public");
+            assertTrue((method.access & Opcodes.ACC_STATIC) != 0, "Should be static");
         }
 
         @Test
-        @DisplayName("createContainer should have no parameters")
-        void createContainerShouldHaveNoParameters() {
+        @DisplayName("should generate contains method")
+        void shouldGenerateContainsMethod() {
             VeldBootstrapGenerator generator = new VeldBootstrapGenerator(java.util.Collections.emptyList());
             byte[] bytecode = generator.generate();
             ClassNode cn = parseClass(bytecode);
             
-            MethodNode method = getMethod(cn, "createContainer");
-            assertNotNull(method);
-            assertTrue(method.desc.startsWith("()"), "Should have no parameters");
+            MethodNode method = getMethod(cn, "contains");
+            assertNotNull(method, "Should have contains method");
+            assertTrue((method.access & Opcodes.ACC_STATIC) != 0, "Should be static");
         }
 
         @Test

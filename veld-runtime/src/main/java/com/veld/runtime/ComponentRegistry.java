@@ -120,15 +120,14 @@ public interface ComponentRegistry {
      * Uses switch-based dispatch for ultra-fast creation.
      *
      * @param index the component index
-     * @param container the container for dependency resolution
      * @param <T> the component type
      * @return the created instance
      */
     @SuppressWarnings("unchecked")
-    default <T> T create(int index, VeldContainer container) {
+    default <T> T create(int index) {
         List<ComponentFactory<?>> factories = getAllFactories();
         if (index >= 0 && index < factories.size()) {
-            return (T) factories.get(index).create(container);
+            return (T) factories.get(index).create();
         }
         throw new VeldException("Invalid component index: " + index);
     }
