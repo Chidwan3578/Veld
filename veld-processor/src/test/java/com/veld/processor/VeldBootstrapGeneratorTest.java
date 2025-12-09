@@ -325,18 +325,19 @@ class VeldBootstrapGeneratorTest {
     }
 
     @Nested
-    @DisplayName("No Fields Tests")
-    class NoFieldsTests {
+    @DisplayName("Internal Fields Tests")
+    class InternalFieldsTests {
 
         @Test
-        @DisplayName("should not generate any fields")
-        void shouldNotGenerateAnyFields() {
+        @DisplayName("should generate internal lookup fields")
+        void shouldGenerateInternalLookupFields() {
             VeldBootstrapGenerator generator = new VeldBootstrapGenerator(java.util.Collections.emptyList());
             byte[] bytecode = generator.generate();
             ClassNode cn = parseClass(bytecode);
             
-            assertTrue(cn.fields == null || cn.fields.isEmpty(), 
-                "Bootstrap class should have no fields");
+            // Should have internal lookup arrays: _types, _instances, _scopes
+            assertTrue(cn.fields != null && cn.fields.size() >= 3, 
+                "Bootstrap class should have internal lookup fields");
         }
     }
 
