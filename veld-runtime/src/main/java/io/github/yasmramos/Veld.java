@@ -1,84 +1,74 @@
 package io.github.yasmramos;
 
-import java.lang.reflect.Method;
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Main entry point for Veld dependency injection.
  * 
- * Delegates to the generated implementation at compile-time.
+ * This is a compile-time stub that gets replaced by the processor with the actual
+ * generated implementation containing all registered components.
+ * 
+ * Usage:
+ * <pre>
+ * MyService service = Veld.get(MyService.class);
+ * </pre>
  */
 public final class Veld {
     
-    private static final String GENERATED_CLASS = "io.github.yasmramos.generated.Veld";
-    private static Class<?> generatedVeld;
-    private static boolean initialized = false;
-    
     private Veld() {}
     
-    private static void ensureInitialized() {
-        if (!initialized) {
-            try {
-                generatedVeld = Class.forName(GENERATED_CLASS);
-                initialized = true;
-            } catch (ClassNotFoundException e) {
-                throw new IllegalStateException(
-                    "Veld not initialized. Ensure veld-processor is in annotation processor path.");
-            }
-        }
-    }
-    
+    /**
+     * Gets a component instance by type.
+     * 
+     * @param type the component class or interface
+     * @param <T> the component type
+     * @return the component instance
+     * @throws IllegalStateException if Veld was not properly initialized by the processor
+     */
     @SuppressWarnings("unchecked")
     public static <T> T get(Class<T> type) {
-        ensureInitialized();
-        try {
-            Method method = generatedVeld.getMethod("get", Class.class);
-            return (T) method.invoke(null, type);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get component: " + type.getName(), e);
-        }
+        throw new IllegalStateException(
+            "Veld not initialized. Ensure veld-processor is in annotation processor path.");
     }
     
-    @SuppressWarnings("unchecked")
+    /**
+     * Gets all components assignable to the given type.
+     * 
+     * @param type the base class or interface
+     * @param <T> the component type
+     * @return list of matching component instances
+     */
     public static <T> List<T> getAll(Class<T> type) {
-        ensureInitialized();
-        try {
-            Method method = generatedVeld.getMethod("getAll", Class.class);
-            return (List<T>) method.invoke(null, type);
-        } catch (Exception e) {
-            return Collections.emptyList();
-        }
+        throw new IllegalStateException(
+            "Veld not initialized. Ensure veld-processor is in annotation processor path.");
     }
     
+    /**
+     * Checks if a component of the given type is registered.
+     * 
+     * @param type the component class or interface
+     * @return true if a component is registered for this type
+     */
     public static boolean contains(Class<?> type) {
-        ensureInitialized();
-        try {
-            Method method = generatedVeld.getMethod("contains", Class.class);
-            return (Boolean) method.invoke(null, type);
-        } catch (Exception e) {
-            return false;
-        }
+        throw new IllegalStateException(
+            "Veld not initialized. Ensure veld-processor is in annotation processor path.");
     }
     
+    /**
+     * Returns the total number of registered components.
+     * 
+     * @return component count
+     */
     public static int componentCount() {
-        ensureInitialized();
-        try {
-            Method method = generatedVeld.getMethod("componentCount");
-            return (Integer) method.invoke(null);
-        } catch (Exception e) {
-            return 0;
-        }
+        throw new IllegalStateException(
+            "Veld not initialized. Ensure veld-processor is in annotation processor path.");
     }
     
+    /**
+     * Shuts down the container, calling @PreDestroy on all singleton components.
+     */
     public static void shutdown() {
-        if (initialized && generatedVeld != null) {
-            try {
-                Method method = generatedVeld.getMethod("shutdown");
-                method.invoke(null);
-            } catch (Exception e) {
-                // Ignore
-            }
-        }
+        throw new IllegalStateException(
+            "Veld not initialized. Ensure veld-processor is in annotation processor path.");
     }
 }

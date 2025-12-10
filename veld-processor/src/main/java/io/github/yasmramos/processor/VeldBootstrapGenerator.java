@@ -24,7 +24,7 @@ import java.util.*;
  */
 public class VeldBootstrapGenerator implements Opcodes {
     
-    private static final String VELD_CLASS = "io/github/yasmramos/generated/Veld";
+    private static final String VELD_CLASS = "io/github/yasmramos/Veld";
     private static final String LIST_CLASS = "java/util/List";
     private static final String ARRAYLIST_CLASS = "java/util/ArrayList";
     private static final String COLLECTIONS_CLASS = "java/util/Collections";
