@@ -105,12 +105,12 @@ public class FieldInjectorWeaver {
         VeldClassGenerator generator = new VeldClassGenerator(components);
         byte[] bytecode = generator.generate();
         
-        // Write Veld.class
-        Path veldClassPath = classesDirectory.resolve("com/veld/generated/Veld.class");
+        // Write Veld.class (overwrites the stub from veld-annotations)
+        Path veldClassPath = classesDirectory.resolve("com/veld/Veld.class");
         Files.createDirectories(veldClassPath.getParent());
         Files.write(veldClassPath, bytecode);
         
-        results.add(WeavingResult.modified("com/veld/generated/Veld", bytecode, 
+        results.add(WeavingResult.modified("com/veld/Veld", bytecode, 
             List.of("Generated Veld.class with " + components.size() + " components")));
     }
     

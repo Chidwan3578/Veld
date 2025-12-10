@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class VeldClassGenerator implements Opcodes {
     
-    private static final String VELD_CLASS = "com/veld/generated/Veld";
+    private static final String VELD_CLASS = "com/veld/Veld";
     private static final String SYNTHETIC_SETTER_PREFIX = "__di_set_";
     
     private final List<ComponentMeta> components;
