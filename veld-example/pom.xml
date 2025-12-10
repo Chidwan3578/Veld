@@ -67,19 +67,12 @@
 
     <build>
         <plugins>
-            <!-- Maven Compiler Plugin with annotation processor -->
+            <!-- Veld Maven Plugin -->
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>io.github.yasmramos</groupId>
-                            <artifactId>veld-processor</artifactId>
-                            <version>${project.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
+                <groupId>io.github.yasmramos</groupId>
+                <artifactId>veld-maven-plugin</artifactId>
+                <version>${project.version}</version>
+                <extensions>true</extensions>
             </plugin>
 
             <!-- Exec Maven Plugin for running the example -->
