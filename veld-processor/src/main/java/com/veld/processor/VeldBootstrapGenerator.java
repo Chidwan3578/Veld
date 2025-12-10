@@ -73,6 +73,9 @@ public class VeldBootstrapGenerator implements Opcodes {
         // private static final int[] _scopes; (0=singleton, 1=prototype)
         cw.visitField(ACC_PRIVATE | ACC_STATIC | ACC_FINAL, "_scopes",
             "[I", null, null).visitEnd();
+        // private static final int[] _protoIdx; (prototype index for each mapping, -1 if singleton)
+        cw.visitField(ACC_PRIVATE | ACC_STATIC | ACC_FINAL, "_protoIdx",
+            "[I", null, null).visitEnd();
         
         // Generate <clinit> with topologically sorted initialization
         generateStaticInit(cw, singletons, prototypes);
@@ -91,6 +94,7 @@ public class VeldBootstrapGenerator implements Opcodes {
         // === CONTAINER API ===
         generateCreateContainer(cw);
         generateCreateRegistry(cw);
+        generateCreatePrototype(cw, prototypes);
         generateGetByClass(cw);
         generateGetAllByClass(cw);
         generateContains(cw);
@@ -168,6 +172,17 @@ public class VeldBootstrapGenerator implements Opcodes {
         mv.visitIntInsn(NEWARRAY, T_INT);
         mv.visitFieldInsn(PUTSTATIC, VELD_CLASS, "_scopes", "[I");
         
+        // _protoIdx = new int[mappingCount];
+        pushInt(mv, mappingCount);
+        mv.visitIntInsn(NEWARRAY, T_INT);
+        mv.visitFieldInsn(PUTSTATIC, VELD_CLASS, "_protoIdx", "[I");
+        
+        // Build prototype index map
+        Map<String, Integer> prototypeIndexMap = new HashMap<>();
+        for (int p = 0; p < prototypes.size(); p++) {
+            prototypeIndexMap.put(prototypes.get(p).getInternalName(), p);
+        }
+        
         // Fill arrays
         for (int i = 0; i < mappings.size(); i++) {
             TypeMapping m = mappings.get(i);
@@ -193,6 +208,13 @@ public class VeldBootstrapGenerator implements Opcodes {
             mv.visitFieldInsn(GETSTATIC, VELD_CLASS, "_scopes", "[I");
             pushInt(mv, i);
             pushInt(mv, m.component.getScope() == Scope.SINGLETON ? 0 : 1);
+            mv.visitInsn(IASTORE);
+            
+            // _protoIdx[i] = prototype index or -1
+            mv.visitFieldInsn(GETSTATIC, VELD_CLASS, "_protoIdx", "[I");
+            pushInt(mv, i);
+            Integer protoIdx = prototypeIndexMap.get(m.component.getInternalName());
+            pushInt(mv, protoIdx != null ? protoIdx : -1);
             mv.visitInsn(IASTORE);
         }
         
@@ -241,6 +263,50 @@ public class VeldBootstrapGenerator implements Opcodes {
         // Return the Veld class itself as the container
         mv.visitLdcInsn(org.objectweb.asm.Type.getObjectType(VELD_CLASS));
         mv.visitInsn(ARETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+    
+    /**
+     * Generates _createPrototype(int index) - switch-based prototype factory.
+     */
+    private void generateCreatePrototype(ClassWriter cw, List<ComponentInfo> prototypes) {
+        MethodVisitor mv = cw.visitMethod(
+            ACC_PRIVATE | ACC_STATIC,
+            "_createPrototype",
+            "(I)Ljava/lang/Object;",
+            null,
+            null
+        );
+        mv.visitCode();
+        
+        if (prototypes.isEmpty()) {
+            mv.visitInsn(ACONST_NULL);
+            mv.visitInsn(ARETURN);
+        } else {
+            // tableswitch for prototype creation
+            Label defaultLabel = new Label();
+            Label[] caseLabels = new Label[prototypes.size()];
+            for (int i = 0; i < caseLabels.length; i++) {
+                caseLabels[i] = new Label();
+            }
+            
+            mv.visitVarInsn(ILOAD, 0);
+            mv.visitTableSwitchInsn(0, prototypes.size() - 1, defaultLabel, caseLabels);
+            
+            for (int i = 0; i < prototypes.size(); i++) {
+                mv.visitLabel(caseLabels[i]);
+                ComponentInfo comp = prototypes.get(i);
+                mv.visitMethodInsn(INVOKESTATIC, VELD_CLASS, getMethodName(comp),
+                    "()L" + comp.getInternalName() + ";", false);
+                mv.visitInsn(ARETURN);
+            }
+            
+            mv.visitLabel(defaultLabel);
+            mv.visitInsn(ACONST_NULL);
+            mv.visitInsn(ARETURN);
+        }
+        
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
@@ -320,9 +386,12 @@ public class VeldBootstrapGenerator implements Opcodes {
         mv.visitInsn(AALOAD);
         mv.visitInsn(ARETURN);
         
-        // Prototype: need to call getter (complex, for now return null - TODO)
+        // Prototype: call _createPrototype(_protoIdx[i])
         mv.visitLabel(isPrototype);
-        mv.visitInsn(ACONST_NULL);
+        mv.visitFieldInsn(GETSTATIC, VELD_CLASS, "_protoIdx", "[I");
+        mv.visitVarInsn(ILOAD, 2);
+        mv.visitInsn(IALOAD);
+        mv.visitMethodInsn(INVOKESTATIC, VELD_CLASS, "_createPrototype", "(I)Ljava/lang/Object;", false);
         mv.visitInsn(ARETURN);
         
         mv.visitLabel(notEqual);
