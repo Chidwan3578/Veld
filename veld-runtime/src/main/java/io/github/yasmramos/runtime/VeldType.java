@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *   - Inline-friendly structure
  *   - No unnecessary wrapper layers
  */
-public final class VeldTypeOptimized {
+public final class VeldType {
     
     // === VARHANDLE FOR LAZY INITIALIZATION ===
     private static final VarHandle VALUE;
