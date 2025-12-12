@@ -24,7 +24,7 @@
     <dependencies>
         <!-- Veld Annotations -->
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-annotations</artifactId>
         </dependency>
 

@@ -24,15 +24,15 @@
     <dependencies>
         <!-- Veld Core Dependencies -->
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-runtime</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-annotations</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-aop</artifactId>
         </dependency>
 
@@ -94,7 +94,7 @@
         </dependency>
         <!-- Veld Processor for test compilation -->
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-processor</artifactId>
             <scope>test</scope>
         </dependency>

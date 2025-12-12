@@ -32,15 +32,15 @@
     <dependencies>
         <!-- Veld Framework -->
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-annotations</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-runtime</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.yasmramos.veld</groupId>
+            <groupId>io.github.yasmramos</groupId>
             <artifactId>veld-processor</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>

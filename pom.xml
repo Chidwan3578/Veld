@@ -142,17 +142,17 @@
 
             <!-- Veld modules -->
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-annotations</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-runtime</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-aop</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -187,28 +187,28 @@
             
             <!-- Veld Processor -->
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-processor</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- Veld Weaver -->
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-weaver</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- Veld Example -->
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-example</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- Veld Benchmark -->
             <dependency>
-                <groupId>io.github.yasmramos.veld</groupId>
+                <groupId>io.github.yasmramos</groupId>
                 <artifactId>veld-benchmark</artifactId>
                 <version>${project.version}</version>
             </dependency>
