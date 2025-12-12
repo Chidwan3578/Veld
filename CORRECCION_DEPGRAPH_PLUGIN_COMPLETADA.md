@@ -149,7 +149,7 @@ TypeError: Cannot read properties of undefined (reading 'forEach')
         <failOnError>false</failOnError>
         <format>png</format>
         <outputFile>${project.build.directory}/dependency-graph.png</outputFile>
-        <include>io.github.yasmramos:*</include>
+        <include>io.github.yasmramos.veld:*</include>
     </configuration>
     <executions>
         <execution>

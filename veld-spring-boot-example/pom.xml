@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.yasmramos</groupId>
+        <groupId>io.github.yasmramos.veld</groupId>
         <artifactId>veld-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
@@ -23,13 +23,13 @@
     <dependencies>
         <!-- Veld Annotations -->
         <dependency>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-annotations</artifactId>
         </dependency>
 
         <!-- Veld Spring Boot Starter -->
         <dependency>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-spring-boot-starter</artifactId>
             <version>${project.version}</version>
         </dependency>

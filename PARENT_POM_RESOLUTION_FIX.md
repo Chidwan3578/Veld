@@ -2,12 +2,12 @@
 
 ## Problem Summary
 
-After migrating the project namespace from `com.veld` to `io.github.yasmramos`, you encountered this critical error:
+After migrating the project namespace from `com.veld` to `io.github.yasmramos.veld`, you encountered this critical error:
 
 ```
-[FATAL] Non-resolvable parent POM for io.github.yasmramos:veld-annotations:1.0.0-alpha.6: 
-The following artifacts could not be resolved: io.github.yasmramos:veld-parent:pom:1.0.0-alpha.6 (absent): 
-Could not find artifact io.github.yasmramos:veld-parent:pom:1.0.0-alpha.6 in central
+[FATAL] Non-resolvable parent POM for io.github.yasmramos.veld:veld-annotations:1.0.0-alpha.6: 
+The following artifacts could not be resolved: io.github.yasmramos.veld:veld-parent:pom:1.0.0-alpha.6 (absent): 
+Could not find artifact io.github.yasmramos.veld:veld-parent:pom:1.0.0-alpha.6 in central
 ```
 
 ## Root Cause Analysis
@@ -95,7 +95,7 @@ All 11 modules are properly recognized:
 11. Veld Spring Boot Example
 
 ### ✅ Namespace Migration
-The `io.github.yasmramos` namespace is working correctly throughout the project.
+The `io.github.yasmramos.veld` namespace is working correctly throughout the project.
 
 ## Next Steps
 
@@ -135,7 +135,7 @@ Test the build resolution:
 
 ## Summary
 
-The parent POM resolution issue has been **completely resolved**. The project structure is now valid, all modules are properly recognized, and the namespace migration to `io.github.yasmramos` is functioning correctly. You can proceed with development and testing activities.
+The parent POM resolution issue has been **completely resolved**. The project structure is now valid, all modules are properly recognized, and the namespace migration to `io.github.yasmramos.veld` is functioning correctly. You can proceed with development and testing activities.
 
 ---
 **Status:** ✅ **RESOLVED**  

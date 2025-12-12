@@ -136,7 +136,7 @@ mvn clean install -pl veld-annotations,veld-runtime,veld-aop,veld-processor,veld
 ### Step 2: Repository Installation
 ```bash
 # Install to local Maven repository
-mvn install:install-file -Dfile=veld-annotations.jar -DgroupId=io.github.yasmramos -DartifactId=veld-annotations -Dversion=1.0.0-SNAPSHOT
+mvn install:install-file -Dfile=veld-annotations.jar -DgroupId=io.github.yasmramos.veld -DartifactId=veld-annotations -Dversion=1.0.0-SNAPSHOT
 
 # Now available for other projects
 ```
@@ -156,7 +156,7 @@ mvn install -pl veld-spring-boot-starter -am -DskipTests
 mvn install -pl veld-benchmark -am -DskipTests
 
 # Run JMH benchmarks
-mvn exec:java -Dexec.mainClass="io.github.yasmramos.benchmark.BenchmarkRunner"
+mvn exec:java -Dexec.mainClass="io.github.yasmramos.veld.benchmark.BenchmarkRunner"
 
 # Generate results
 ✅ benchmark-results.json
@@ -184,7 +184,7 @@ jobs:
 ```bash
 # Manual benchmark execution
 cd veld-benchmark
-mvn exec:java -Dexec.mainClass="io.github.yasmramos.benchmark.BenchmarkRunner" -Dexec.args="Injection -f 2 -wi 3 -i 5"
+mvn exec:java -Dexec.mainClass="io.github.yasmramos.veld.benchmark.BenchmarkRunner" -Dexec.args="Injection -f 2 -wi 3 -i 5"
 ```
 
 ## 📊 Benefits

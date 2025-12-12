@@ -127,9 +127,9 @@ The forked VM terminated without properly saying goodbye. VM crash or System.exi
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
-[INFO] Running io.github.yasmramos.annotation.ComponentTest
+[INFO] Running io.github.yasmramos.veld.annotation.ComponentTest
 [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running io.github.yasmramos.annotation.AspectTest  
+[INFO] Running io.github.yasmramos.veld.annotation.AspectTest  
 [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
 [INFO] 
 [INFO] Results:

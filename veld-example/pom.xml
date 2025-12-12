@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.yasmramos</groupId>
+        <groupId>io.github.yasmramos.veld</groupId>
         <artifactId>veld-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
@@ -18,28 +18,28 @@
     <dependencies>
         <!-- Veld Annotations -->
         <dependency>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-annotations</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- Veld Runtime -->
         <dependency>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-runtime</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- Veld AOP -->
         <dependency>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-aop</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- Veld Processor (compile-time only) -->
         <dependency>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-processor</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
@@ -70,7 +70,7 @@
             <!-- Veld Maven Plugin - TEMPORARILY DISABLED UNTIL COMPILED -->
             <!--
             <plugin>
-                <groupId>io.github.yasmramos</groupId>
+                <groupId>io.github.yasmramos.veld</groupId>
                 <artifactId>veld-maven-plugin</artifactId>
                 <version>${project.version}</version>
                 <extensions>true</extensions>
@@ -83,7 +83,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>io.github.yasmramos.example.Main</mainClass>
+                    <mainClass>io.github.yasmramos.veld.example.Main</mainClass>
                 </configuration>
             </plugin>
         </plugins>

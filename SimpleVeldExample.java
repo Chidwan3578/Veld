@@ -1,9 +1,9 @@
-package io.github.yasmramos.example.simple;
+package io.github.yasmramos.veld.example.simple;
 
-import io.github.yasmramos.annotation.Component;
-import io.github.yasmramos.annotation.Inject;
-import io.github.yasmramos.annotation.Singleton;
-import io.github.yasmramos.Veld;
+import io.github.yasmramos.veld.annotation.Component;
+import io.github.yasmramos.veld.annotation.Inject;
+import io.github.yasmramos.veld.annotation.Singleton;
+import io.github.yasmramos.veld.Veld;
 
 /**
  * Ejemplo simple de Veld DI Framework

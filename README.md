@@ -57,14 +57,14 @@ Veld is a **compile-time Dependency Injection framework** that generates pure by
 <dependencies>
     <!-- Core annotations -->
     <dependency>
-        <groupId>io.github.yasmramos</groupId>
+        <groupId>io.github.yasmramos.veld</groupId>
         <artifactId>veld-annotations</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </dependency>
     
     <!-- Runtime utilities -->
     <dependency>
-        <groupId>io.github.yasmramos</groupId>
+        <groupId>io.github.yasmramos.veld</groupId>
         <artifactId>veld-runtime</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </dependency>
@@ -77,7 +77,7 @@ Veld is a **compile-time Dependency Injection framework** that generates pure by
 <build>
     <plugins>
         <plugin>
-            <groupId>io.github.yasmramos</groupId>
+            <groupId>io.github.yasmramos.veld</groupId>
             <artifactId>veld-maven-plugin</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <extensions>true</extensions>
@@ -94,8 +94,8 @@ Veld is a **compile-time Dependency Injection framework** that generates pure by
 ### 3. Define Components
 
 ```java
-import io.github.yasmramos.annotation.Component;
-import io.github.yasmramos.annotation.Inject;
+import io.github.yasmramos.veld.annotation.Component;
+import io.github.yasmramos.veld.annotation.Inject;
 
 @Component
 public class LogService {
@@ -136,7 +136,7 @@ public class UserService {
 ### 4. Use Your Components
 
 ```java
-import io.github.yasmramos.Veld;
+import io.github.yasmramos.veld.Veld;
 
 public class Main {
     public static void main(String[] args) {
@@ -345,7 +345,7 @@ Veld provides comprehensive AOP support via the `veld-aop` module:
 @Component
 public class LoggingAspect {
     
-    @Before("execution(* io.github.yasmramos.example.service.*.*(..))")
+    @Before("execution(* io.github.yasmramos.veld.example.service.*.*(..))")
     public void logBefore(JoinPoint jp) {
         System.out.println("Calling: " + jp.getSignature());
     }
@@ -432,7 +432,7 @@ Use Veld alongside Spring Boot:
 
 ```xml
 <dependency>
-    <groupId>io.github.yasmramos</groupId>
+    <groupId>io.github.yasmramos.veld</groupId>
     <artifactId>veld-spring-boot-starter</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
@@ -520,7 +520,7 @@ Complete working example demonstrating all features:
 
 ```bash
 cd veld-example
-mvn clean compile exec:java -Dexec.mainClass="io.github.yasmramos.example.Main"
+mvn clean compile exec:java -Dexec.mainClass="io.github.yasmramos.veld.example.Main"
 ```
 
 ### veld-spring-boot-example
