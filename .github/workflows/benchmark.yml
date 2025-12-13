@@ -228,7 +228,147 @@ jobs:
           echo "❌ No results directory found"
         fi
         
-    # Phase 8: Upload Results as Artifacts
+    # Phase 8: Generate Markdown Summary
+    - name: Generate BENCHMARK_RESULT.md
+      if: always()
+      run: |
+        echo "=== Generating BENCHMARK_RESULT.md ==="
+        cd veld-benchmark
+        
+        # Create markdown report
+        cat > BENCHMARK_RESULT.md << 'EOF'
+# 📊 VELD FRAMEWORK BENCHMARK RESULTS
+
+**Generated:** $(date)
+**Mode:** ${{ github.event.inputs.benchmark_mode || 'full' }}
+**Trigger:** ${{ github.event_name }}
+**Java Version:** $(java -version 2>&1 | head -1)
+**Maven Version:** $(mvn -version | head -1)
+**Run ID:** ${{ github.run_number }}
+
+---
+
+## 🎯 EXECUTIVE SUMMARY
+
+EOF
+        
+        # Add summary based on available results
+        if [ -f "results/development-benchmarks.json" ]; then
+          echo "### ⚡ Development Mode Results" >> BENCHMARK_RESULT.md
+          echo "Ultra-fast benchmarks completed in ~1-2 minutes." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/development-benchmarks.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        if [ -f "results/quick-benchmarks.json" ]; then
+          echo "### 🚀 Quick Mode Results" >> BENCHMARK_RESULT.md
+          echo "Fast benchmarks completed in ~3-5 minutes." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/quick-benchmarks.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        if [ -f "results/startup-results.json" ]; then
+          echo "### ⏱️ Startup Performance" >> BENCHMARK_RESULT.md
+          echo "Container initialization and startup time benchmarks." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/startup-results.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        if [ -f "results/injection-results.json" ]; then
+          echo "### 💉 Dependency Injection Performance" >> BENCHMARK_RESULT.md
+          echo "Speed of dependency injection operations." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/injection-results.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        if [ -f "results/throughput-results.json" ]; then
+          echo "### 📊 Throughput Performance" >> BENCHMARK_RESULT.md
+          echo "Operations per second under load." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/throughput-results.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        if [ -f "results/memory-results.json" ]; then
+          echo "### 🧠 Memory Usage Analysis" >> BENCHMARK_RESULT.md
+          echo "Heap memory consumption and GC performance." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/memory-results.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        if [ -f "results/full-benchmarks.json" ]; then
+          echo "### 🏆 Full Mode Results" >> BENCHMARK_RESULT.md
+          echo "Complete benchmarks with maximum precision (5 forks, 5 warmup, 10 iterations)." >> BENCHMARK_RESULT.md
+          echo "**File:** \`results/full-benchmarks.json\`" >> BENCHMARK_RESULT.md
+          echo "" >> BENCHMARK_RESULT.md
+        fi
+        
+        # Add detailed results section
+        cat >> BENCHMARK_RESULT.md << 'EOF'
+## 📈 DETAILED RESULTS
+
+### Benchmark Categories
+
+EOF
+        
+        # Process each JSON file and add basic info
+        for json_file in results/*.json; do
+          if [ -f "$json_file" ]; then
+            filename=$(basename "$json_file")
+            echo "#### ${filename%.*}" >> BENCHMARK_RESULT.md
+            echo "**File:** \`$json_file\`" >> BENCHMARK_RESULT.md
+            
+            # Try to extract basic info from JSON (if jq is available)
+            if command -v jq >/dev/null 2>&1; then
+              benchmark_count=$(jq -r 'keys | length' "$json_file" 2>/dev/null || echo "N/A")
+              echo "**Benchmarks:** $benchmark_count test cases" >> BENCHMARK_RESULT.md
+            fi
+            echo "" >> BENCHMARK_RESULT.md
+          fi
+        done
+        
+        # Add comparison section
+        cat >> BENCHMARK_RESULT.md << 'EOF'
+## 🔄 FRAMEWORK COMPARISON
+
+The benchmarks compare Veld's performance against:
+
+- **Spring Framework:** Traditional Java DI container
+- **Google Guice:** Google's dependency injection framework  
+- **Dagger 2:** Compile-time dependency injection
+
+### Key Metrics
+- **Operations per second (ops/sec):** Higher is better
+- **Memory allocation (bytes/op):** Lower is better
+- **Startup time (ms):** Lower is better
+
+## 📊 ARTIFACTS AND DOWNLOADS
+
+All benchmark results and detailed logs are available as GitHub Artifacts:
+
+- **benchmark-results-{run_number}.zip:** Complete benchmark results and executable JAR
+- **build-logs-{run_number}.zip:** Build logs and compilation details
+
+## 🔧 WORKFLOW CONFIGURATION
+
+**Available Modes:**
+- **development:** Ultra-fast (1 fork, 0 warmup, 1 iteration) - ~1-2 min
+- **quick:** Fast (1 fork, 1 warmup, 1 iteration) - ~3-5 min  
+- **selective:** Individual benchmarks - ~6-8 min
+- **full:** Complete benchmarks (5 forks, 5 warmup, 10 iterations) - ~8-12 min
+
+**Run ID:** ${{ github.run_number }}  
+**Repository:** ${{ github.repository }}  
+**Branch:** ${{ github.ref_name }}
+
+---
+
+*This report was automatically generated by the Veld Framework Benchmark Workflow*
+EOF
+        
+        echo "✅ BENCHMARK_RESULT.md generated successfully"
+        ls -la BENCHMARK_RESULT.md
+        
+    # Phase 9: Upload Results as Artifacts
     - name: Upload Benchmark Results
       uses: actions/upload-artifact@v4
       if: always()
@@ -237,6 +377,7 @@ jobs:
         path: |
           veld-benchmark/results/
           veld-benchmark/target/veld-benchmark.jar
+          veld-benchmark/BENCHMARK_RESULT.md
         retention-days: 30
         
     - name: Upload Build Logs
@@ -269,6 +410,8 @@ jobs:
           done
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Artifacts:** Benchmark results and executable JAR have been uploaded." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**📄 Markdown Report:** \`BENCHMARK_RESULT.md\` has been generated with detailed analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Available Modes:**" >> $GITHUB_STEP_SUMMARY
           echo "- **development:** Ultra-fast (1 fork, 0 warmup, 1 iteration) - ~1-2 min" >> $GITHUB_STEP_SUMMARY
