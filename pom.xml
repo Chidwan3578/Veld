@@ -97,6 +97,7 @@
         <maven.nexus.staging.plugin.version>1.6.13</maven.nexus.staging.plugin.version>
         <maven.release.plugin.version>3.0.1</maven.release.plugin.version>
         <maven.assembly.plugin.version>3.7.0</maven.assembly.plugin.version>
+        <jacoco.maven.plugin.version>0.8.12</jacoco.maven.plugin.version>
         
         <!-- Release properties -->
         <maven.compiler.release>11</maven.compiler.release>
