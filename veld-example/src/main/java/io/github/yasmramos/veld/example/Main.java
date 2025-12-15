@@ -7,6 +7,7 @@ import io.github.yasmramos.veld.example.aop.ProductService;
 import io.github.yasmramos.veld.example.events.NotificationEvent;
 import io.github.yasmramos.veld.example.events.OrderCreatedEvent;
 import io.github.yasmramos.veld.example.lifecycle.*;
+import io.github.yasmramos.veld.example.dependsOn.DependsOnDemo;
 import io.github.yasmramos.veld.aop.InterceptorRegistry;
 import io.github.yasmramos.veld.aop.interceptor.LoggingInterceptor;
 import io.github.yasmramos.veld.aop.interceptor.TimingInterceptor;
@@ -41,6 +42,7 @@ import java.util.List;
  * 15. EventBus - Event-driven communication
  * 16. AOP (Aspect-Oriented Programming)
  * 17. Advanced Lifecycle Management
+ * 18. @DependsOn - Explicit Dependencies Control
  * 
  * Simple API: Just use Veld.get(Class)!
  * All bytecode generation happens at compile-time using ASM.
@@ -121,6 +123,11 @@ public class Main {
         System.out.println("12. SERVICE USAGE");
         System.out.println("══════════════════════════════════════════════════════════");
         demonstrateServiceUsage();
+        
+        System.out.println("\n══════════════════════════════════════════════════════════");
+        System.out.println("13. @DependsOn - DEPENDENCIAS EXPLÍCITAS");
+        System.out.println("══════════════════════════════════════════════════════════");
+        demonstrateDependsOn();
         
         System.out.println("\n╔══════════════════════════════════════════════════════════╗");
         System.out.println("║              Example Completed Successfully!              ║");
@@ -369,5 +376,10 @@ public class Main {
             .withSubject("Welcome to Veld!")
             .withBody("Thank you for trying Veld DI Framework.")
             .send();
+    }
+    
+    private static void demonstrateDependsOn() {
+        System.out.println("\n→ Demonstrating @DependsOn - Explicit Dependencies Control:");
+        DependsOnDemo.runDemo();
     }
 }
