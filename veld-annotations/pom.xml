@@ -40,7 +40,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Automatic-Module-Name>io.github.yasmramos.veld.annotations</Automatic-Module-Name>
+                            <Automatic-Module-Name>io.github.yasmramos.veld.annotation</Automatic-Module-Name>
                         </manifestEntries>
                     </archive>
                 </configuration>
