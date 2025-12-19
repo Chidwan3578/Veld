@@ -35,4 +35,19 @@ public class DefaultDatabaseService implements DatabaseService {
     public void disconnect() {
         System.out.println("[DefaultDatabaseService] Disconnected from in-memory database");
     }
+    
+    @Override
+    public boolean isConnected() {
+        return true; // Simulate connected state
+    }
+    
+    @Override
+    public void saveData(String data) {
+        System.out.println("[DefaultDatabaseService] Saving data: " + data);
+    }
+    
+    @Override
+    public void executeQuery(String query) {
+        System.out.println("[DefaultDatabaseService] Executing query: " + query);
+    }
 }

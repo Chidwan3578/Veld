@@ -7,4 +7,8 @@ public interface DatabaseService {
     String getConnectionInfo();
     void connect();
     void disconnect();
+    
+    boolean isConnected();
+    void saveData(String data);
+    void executeQuery(String query);
 }

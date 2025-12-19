@@ -1,7 +1,9 @@
 package io.github.yasmramos.veld.example.dependsOn;
 
 import io.github.yasmramos.veld.annotation.Component;
+import io.github.yasmramos.veld.annotation.Inject;
 import io.github.yasmramos.veld.annotation.PostConstruct;
+import io.github.yasmramos.veld.example.LogService;
 
 /**
  * Configuración de aplicación - componente base sin dependencias.
@@ -14,6 +16,9 @@ public class ConfigService {
     private String environment = "development";
     private int port = 8080;
     private boolean debugMode = false;
+    
+    @Inject
+    private LogService logService;
     
     @PostConstruct
     public void init() {
@@ -43,5 +48,9 @@ public class ConfigService {
     
     public boolean isDebugMode() {
         return debugMode || isDevelopment();
+    }
+    
+    public LogService getLogService() {
+        return logService;
     }
 }
