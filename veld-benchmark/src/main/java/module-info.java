@@ -8,20 +8,29 @@ module io.github.yasmramos.veld.benchmark {
     
     // Jakarta and JavaX Inject for benchmarks
     requires jakarta.inject;
+    requires javax.inject;
     
-    // JMH requirements (will be provided in runtime)
-    // requires jmh.core;
-    // requires jmh.generator.annotations;
+    // Google Guice for comparison benchmarks
+    requires com.google.inject;
+    
+    // Dagger for comparison benchmarks
+    requires dagger;
+    
+    // JMH requirements
+    requires jmh.core;
+    requires jmh.generator.annotations;
     
     // Spring Framework for comparison benchmarks
     requires spring.context;
     requires spring.beans;
     requires spring.core;
     
-    // Export benchmark package
+    // Export benchmark packages
     exports io.github.yasmramos.veld.benchmark;
-    exports io.github.yasmramos.veld.benchmark.config;
-    exports io.github.yasmramos.veld.benchmark.framework;
-    exports io.github.yasmramos.veld.benchmark.result;
-    exports io.github.yasmramos.veld.benchmark.util;
+    exports io.github.yasmramos.veld.benchmark.common;
+    exports io.github.yasmramos.veld.benchmark.dagger;
+    exports io.github.yasmramos.veld.benchmark.guice;
+    exports io.github.yasmramos.veld.benchmark.spring;
+    exports io.github.yasmramos.veld.benchmark.strategic;
+    exports io.github.yasmramos.veld.benchmark.veld;
 }
