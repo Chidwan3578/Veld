@@ -113,7 +113,7 @@
         <gpg.passphrase>${env.GPG_PASSPHRASE}</gpg.passphrase>
         <maven.deploy.skip>false</maven.deploy.skip>
         <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
-        <java.home>/usr/lib/jvm/java-17-openjdk-amd64</java.home>
+        <maven.javadoc.skip>false</maven.javadoc.skip>
         
         <!-- CI/Benchmark properties -->
         <ci.skip>false</ci.skip>
@@ -278,6 +278,8 @@
                         <!-- Generate Javadocs for each module individually -->
                         <aggregate>false</aggregate>
                         <nohelp>false</nohelp>
+                        <!-- Skip javadoc generation if JAVA_HOME is not available -->
+                        <skip>${maven.javadoc.skip}</skip>
                     </configuration>
                     <executions>
                         <execution>
@@ -480,6 +482,31 @@
                 <configuration>
                     <skip>true</skip>
                 </configuration>
+            </plugin>
+
+            <!-- Build Helper Maven Plugin to attach pre-created javadoc JARs -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadoc-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>attach-artifact</goal>
+                        </goals>
+                        <configuration>
+                            <artifacts>
+                                <artifact>
+                                    <file>${project.build.directory}/${project.artifactId}-${project.version}-javadoc.jar</file>
+                                    <classifier>javadoc</classifier>
+                                    <type>jar</type>
+                                </artifact>
+                            </artifacts>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
