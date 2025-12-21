@@ -1,8 +1,6 @@
 name: Deploy to Maven Central
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       environment:
@@ -21,99 +19,60 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'staging' }}
     
     steps:
-    - name: Checkout repository
+    - name: 🔍 Checkout Repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        ref: main
         
-    - name: Set up JDK 11
+    - name: ☕ Setup JDK 11
       uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
         cache: maven
         
-    - name: Configure Git
+    - name: 🛡️ Verify GPG Secrets
+      id: verify_gpg
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        
-    - name: Set up Maven
-      run: |
-        echo "=== Maven Configuration ==="
-        echo "Maven version:"
-        mvn -version
-        echo "Available memory:"
-        free -h
-        echo "Java version:"
-        java -version
-        
-    - name: Import GPG key
-      if: env.SONATYPE_USERNAME != ''
-      run: |
-        echo "=== Importing GPG Key ==="
-        
-        # Set GPG home directory
-        export GNUPGHOME=/tmp/gnupg
-        mkdir -p $GNUPGHOME
-        chmod 700 $GNUPGHOME
-        
-        # Check if GPG_PRIVATE_KEY is available
-        if [ -z "${{ secrets.GPG_PRIVATE_KEY }}" ] || [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
-          echo "❌ GPG configuration missing!"
+        if [ -z "${{ secrets.GPG_PRIVATE_KEY }}" ] || [ -z "${{ secrets.GPG_PASSPHRASE }}" ] || [ -z "${{ secrets.GPG_KEYNAME }}" ]; then
+          echo "::error::One or more GPG secrets (GPG_PRIVATE_KEY, GPG_PASSPHRASE, GPG_KEYNAME) are not set."
+          echo "Please configure these secrets in GitHub repository settings."
+          echo ""
           echo "Required secrets:"
-          echo "  - GPG_PRIVATE_KEY"
-          echo "  - GPG_PASSPHRASE"
-          echo "  - GPG_KEYNAME (optional)"
+          echo "- GPG_PRIVATE_KEY: Your GPG private key"
+          echo "- GPG_PASSPHRASE: Your GPG key passphrase"
+          echo "- GPG_KEYNAME: Your GPG key ID (e.g., ABC12345)"
           echo ""
-          echo "To fix this:"
-          echo "1. Go to your GitHub repository settings"
-          echo "2. Navigate to Secrets and variables > Actions"
-          echo "3. Add the required secrets"
-          echo ""
-          echo "Skipping GPG signing for now..."
-          exit 0
-        fi
-        
-        echo "✅ GPG_PRIVATE_KEY secret is available"
-        
-        # Import the private key
-        echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --yes --passphrase "${{ secrets.GPG_PASSPHRASE }}" --import
-        
-        if [ $? -eq 0 ]; then
-          echo "✅ GPG key import completed successfully"
-        else
-          echo "❌ GPG key import failed!"
+          echo "See GPG_SETUP_GUIDE.md for detailed instructions."
           exit 1
+        else
+          echo "✅ All GPG secrets are available."
         fi
         
-        # List imported keys
-        echo "Available GPG keys:"
-        gpg --list-keys --keyid-format LONG
-        
-        # Verify the specific key is available
-        if [ -n "${{ secrets.GPG_KEYNAME }}" ]; then
-          echo "Verifying key ${{ secrets.GPG_KEYNAME }}..."
-          if gpg --list-keys "${{ secrets.GPG_KEYNAME }}" > /dev/null 2>&1; then
-            echo "✅ Key ${{ secrets.GPG_KEYNAME }} is available"
-          else
-            echo "❌ Key ${{ secrets.GPG_KEYNAME }} not found!"
-            exit 1
-          fi
-        fi
-        
-        echo "✅ GPG key import verification successful"
+    - name: 🔑 Import GPG Key
       env:
         GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        
-    - name: Create Maven settings
-      if: env.SONATYPE_USERNAME != ''
       run: |
+        echo "=== Importing GPG Key ==="
+        
+        # Import the private key
+        echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+        echo "✅ GPG key imported successfully"
+        
+        # List imported keys for verification
+        echo "Available GPG keys:"
+        gpg --list-keys --keyid-format LONG
+        
+    - name: ⚙️ Create Maven Settings
+      env:
+        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        SONATYPE_TOKEN: ${{ secrets.SONATYPE_TOKEN }}
+      run: |
+        echo "=== Creating Maven Settings ==="
+        
         mkdir -p ~/.m2
         
-        # Create settings.xml for Sonatype Nexus
         cat > ~/.m2/settings.xml << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -130,101 +89,29 @@ jobs:
         </settings>
         EOF
         
-        echo "Maven settings configured"
-        cat ~/.m2/settings.xml
+        echo "✅ Maven settings created"
         
-    - name: Build and Test
-      run: |
-        echo "=== Building and Testing Veld Framework ==="
-        mvn clean install -DskipTests=false
-      env:
-        MAVEN_OPTS: "-Xmx2g -XX:+UseG1GC"
-        
-    - name: Generate Javadoc
-      run: |
-        echo "=== Generating Javadoc ==="
-        mvn javadoc:javadoc -q
-        
-    - name: Deploy to Sonatype Nexus (Staging)
-      if: github.event.inputs.environment == 'staging' || (github.event.inputs.environment == '' && github.event_name != 'release')
-      run: |
-        echo "=== Deploying to Sonatype Nexus (Staging) ==="
-        echo "GPG Key Name: ${{ secrets.GPG_KEYNAME }}"
-        echo "Using GNUPGHOME: /tmp/gnupg"
-        
-        # Set GPG environment
-        export GNUPGHOME=/tmp/gnupg
-        export GPG_TTY=$(tty)
-        
-        # Deploy with GPG signing (conditional on GPG configuration)
-        if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ] && [ -n "${{ secrets.GPG_PASSPHRASE }}" ]; then
-          echo "Deploying with GPG signing..."
-          mvn clean deploy -DskipTests=false -DfailIfNoTests=false \
-            -Dgpg.keyname=${{ secrets.GPG_KEYNAME }} \
-            -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
-        else
-          echo "⚠️ GPG not configured - deploying without signing"
-          echo "Note: Maven Central requires GPG signing for release"
-          echo "To enable signing, configure the required GPG secrets"
-          mvn clean deploy -DskipTests=false -DfailIfNoTests=false -Dgpg.skip=true
-        fi
+    - name: 🚀 Deploy to Maven Central
       env:
         MAVEN_OPTS: "-Xmx2g -XX:+UseG1GC"
         SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
         SONATYPE_TOKEN: ${{ secrets.SONATYPE_TOKEN }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         GPG_KEYNAME: ${{ secrets.GPG_KEYNAME }}
-        
-    - name: Deploy to Sonatype Nexus (Production)
-      if: github.event.inputs.environment == 'production' && github.event_name == 'release'
       run: |
-        echo "=== Deploying to Sonatype Nexus (Production) ==="
-        echo "GPG Key Name: ${{ secrets.GPG_KEYNAME }}"
-        echo "Using GNUPGHOME: /tmp/gnupg"
+        echo "=== Deploying to ${{ github.event.inputs.environment || 'staging' }} ==="
+        echo "Environment: ${{ github.event.inputs.environment || 'staging' }}"
         
-        # Set GPG environment
-        export GNUPGHOME=/tmp/gnupg
-        export GPG_TTY=$(tty)
-        
-        # Deploy with GPG signing (conditional on GPG configuration)
-        if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ] && [ -n "${{ secrets.GPG_PASSPHRASE }}" ]; then
-          echo "Deploying with GPG signing..."
-          mvn clean deploy -DskipTests=false -DfailIfNoTests=false \
-            -Dgpg.keyname=${{ secrets.GPG_KEYNAME }} \
-            -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
-        else
-          echo "⚠️ GPG not configured - deploying without signing"
-          echo "Note: Maven Central requires GPG signing for release"
-          echo "To enable signing, configure the required GPG secrets"
-          mvn clean deploy -DskipTests=false -DfailIfNoTests=false -Dgpg.skip=true
-        fi
-      env:
-        MAVEN_OPTS: "-Xmx2g -XX:+UseG1GC"
-        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-        SONATYPE_TOKEN: ${{ secrets.SONATYPE_TOKEN }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        GPG_KEYNAME: ${{ secrets.GPG_KEYNAME }}
-        
-    - name: Verify deployment
-      run: |
-        echo "=== Verifying Deployment ==="
-        
-        # Check if artifacts were created
-        echo "Checking for JAR files:"
-        find . -name "*.jar" -path "*/target/*" | head -10
-        
-        echo "Checking for POM files:"
-        find . -name "*.pom" -path "*/target/*" | head -10
-        
-        echo "Checking for GPG signatures:"
-        find . -name "*.asc" -path "*/target/*" | head -10
-        
-        echo "Deployment verification completed"
-        
-    - name: Upload Release Assets
+        mvn clean deploy -DskipTests=false -DfailIfNoTests=false \
+          -Dgpg.executable=gpg \
+          -Dgpg.keyname=$GPG_KEYNAME \
+          -Dgpg.passphrase=$GPG_PASSPHRASE
+          
+    - name: 📊 Upload Deployment Artifacts
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: release-assets-${{ github.run_number }}
+        name: deployment-artifacts-${{ github.run_number }}
         path: |
           **/target/*.jar
           **/target/*.pom
@@ -233,66 +120,30 @@ jobs:
           **/target/*.sha1
         retention-days: 30
         
-    - name: Create Release Summary
-      run: |
-        echo "## 🚀 Maven Central Deployment Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Release Version:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Environment:** ${{ github.event.inputs.environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Build Time:** $(date)" >> $GITHUB_STEP_SUMMARY
-        echo "**GitHub Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        echo "### 📦 Artifacts Deployed" >> $GITHUB_STEP_SUMMARY
-        echo "The following modules have been deployed to Maven Central:" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        # List deployed modules (only those that exist and are part of reactor)
-        for module in veld-annotations veld-runtime veld-processor veld-weaver veld-aop veld-spring-boot-starter veld-maven-plugin; do
-          if [ -d "$module" ] && [ -f "$module/pom.xml" ]; then
-            echo "- **$module** - Available as \`io.github.yasmramos:$module:1.0.0\`" >> $GITHUB_STEP_SUMMARY
-          fi
-        done
-        
-        # Note about excluded modules
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Note**: Modules excluded from the reactor (e.g., veld-benchmark, veld-example) are not deployed." >> $GITHUB_STEP_SUMMARY
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔗 Next Steps" >> $GITHUB_STEP_SUMMARY
-        echo "1. **Login to Sonatype Nexus:** https://s01.oss.sonatype.org/" >> $GITHUB_STEP_SUMMARY
-        echo "2. **Close the staging repository** to validate the artifacts" >> $GITHUB_STEP_SUMMARY
-        echo "3. **Release the repository** to publish to Maven Central" >> $GITHUB_STEP_SUMMARY
-        echo "4. **Wait 2-24 hours** for Maven Central synchronization" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📋 Usage Instructions" >> $GITHUB_STEP_SUMMARY
-        echo "After release, users can add Veld to their projects:" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo '```xml' >> $GITHUB_STEP_SUMMARY
-        echo '<dependency>' >> $GITHUB_STEP_SUMMARY
-        echo '    <groupId>io.github.yasmramos</groupId>' >> $GITHUB_STEP_SUMMARY
-        echo '    <artifactId>veld-runtime</artifactId>' >> $GITHUB_STEP_SUMMARY
-        echo '    <version>1.0.0</version>' >> $GITHUB_STEP_SUMMARY
-        echo '</dependency>' >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        
-    - name: Post deployment notification
+    - name: 📋 Deployment Summary
       if: always()
       run: |
-        echo "=== Deployment Process Completed ==="
+        echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Timestamp:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Deployment successful!"
-          echo "📋 Next steps:"
-          echo "1. Login to https://s01.oss.sonatype.org/"
-          echo "2. Close and release the staging repository"
-          echo "3. Wait for Maven Central synchronization (2-24 hours)"
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Login to Sonatype Nexus: https://s01.oss.sonatype.org/" >> $GITHUB_STEP_SUMMARY
+          echo "2. Navigate to 'Staging Repositories'" >> $GITHUB_STEP_SUMMARY
+          echo "3. Close and release the staging repository" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ Deployment failed!"
-          echo "Please check the logs and fix any issues before retrying."
-          echo "Common issues:"
-          echo "- Missing GPG key configuration"
-          echo "- Invalid Sonatype credentials"
-          echo "- Test failures"
-          echo "- Javadoc generation errors"
+          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Common Issues:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Missing GPG key configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Invalid Sonatype credentials" >> $GITHUB_STEP_SUMMARY
+          echo "- Test failures" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for specific error messages." >> $GITHUB_STEP_SUMMARY
         fi
