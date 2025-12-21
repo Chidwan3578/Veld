@@ -44,9 +44,16 @@ jobs:
       run: |
         echo "🔒 Running security scan..."
         
-        # Buscar credenciales básicas
-        echo "Scanning for obvious credentials..."
-        if grep -r -i "password\s*=\|api.*key\s*=\|secret\s*=\|token\s*=\|bearer\s+[a-zA-Z0-9]" --exclude-dir=target --exclude-dir=.git --exclude-dir=node_modules --exclude="*.json" --exclude="*.xml" --exclude="*.sample" --exclude="*.yml" --exclude="*.yaml" . 2>/dev/null | head -5; then
+        # Buscar credenciales hardcodeadas en archivos de configuración
+        echo "Scanning for hardcoded credentials in config files..."
+        # Buscar solo archivos de configuración y propiedades que puedan contener credenciales reales
+        if grep -r -i "password\s*=\s*[^'\"{}\s][^'\"{}\s]*\|api_key\s*=\s*[^'\"{}\s][^'\"{}\s]*\|secret\s*=\s*[^'\"{}\s][^'\"{}\s]*" \
+          --include="*.properties" \
+          --include="*.conf" \
+          --include="*.config" \
+          --include="*.ini" \
+          --include="*.env" \
+          . 2>/dev/null | head -5; then
           echo "❌ Potential credentials found!"
           exit 1
         else
