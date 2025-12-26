@@ -210,4 +210,102 @@ class ComponentInfoTest {
             assertEquals(Scope.PROTOTYPE, prototypeInfo.getScope());
         }
     }
+    
+    @Nested
+    @DisplayName("Lazy Initialization")
+    class LazyInitialization {
+        
+        @Test
+        @DisplayName("Should return false for lazy by default")
+        void shouldReturnFalseForLazyByDefault() {
+            assertFalse(componentInfo.isLazy());
+        }
+        
+        @Test
+        @DisplayName("Should return true when created with lazy flag")
+        void shouldReturnTrueWhenCreatedWithLazyFlag() {
+            ComponentInfo lazyInfo = new ComponentInfo(
+                "com.example.LazyService",
+                "lazyService",
+                Scope.SINGLETON,
+                true
+            );
+            assertTrue(lazyInfo.isLazy());
+        }
+        
+        @Test
+        @DisplayName("Should return false when created with lazy=false")
+        void shouldReturnFalseWhenCreatedWithLazyFalse() {
+            ComponentInfo nonLazyInfo = new ComponentInfo(
+                "com.example.EagerService",
+                "eagerService",
+                Scope.SINGLETON,
+                false
+            );
+            assertFalse(nonLazyInfo.isLazy());
+        }
+    }
+    
+    @Nested
+    @DisplayName("Subscribe Methods")
+    class SubscribeMethods {
+        
+        @Test
+        @DisplayName("Should return false for hasSubscribeMethods by default")
+        void shouldReturnFalseByDefault() {
+            assertFalse(componentInfo.hasSubscribeMethods());
+        }
+        
+        @Test
+        @DisplayName("Should set and get hasSubscribeMethods")
+        void shouldSetAndGetHasSubscribeMethods() {
+            componentInfo.setHasSubscribeMethods(true);
+            assertTrue(componentInfo.hasSubscribeMethods());
+            
+            componentInfo.setHasSubscribeMethods(false);
+            assertFalse(componentInfo.hasSubscribeMethods());
+        }
+    }
+    
+    @Nested
+    @DisplayName("Condition Info")
+    class ConditionInfoTests {
+        
+        @Test
+        @DisplayName("Should return null for conditionInfo by default")
+        void shouldReturnNullByDefault() {
+            assertNull(componentInfo.getConditionInfo());
+        }
+        
+        @Test
+        @DisplayName("Should set and get conditionInfo")
+        void shouldSetAndGetConditionInfo() {
+            ConditionInfo condition = new ConditionInfo();
+            componentInfo.setConditionInfo(condition);
+            assertNotNull(componentInfo.getConditionInfo());
+            assertEquals(condition, componentInfo.getConditionInfo());
+        }
+    }
+    
+    @Nested
+    @DisplayName("Explicit Dependencies")
+    class ExplicitDependenciesTests {
+        
+        @Test
+        @DisplayName("Should return empty list by default")
+        void shouldReturnEmptyListByDefault() {
+            assertTrue(componentInfo.getExplicitDependencies().isEmpty());
+        }
+        
+        @Test
+        @DisplayName("Should add explicit dependencies")
+        void shouldAddExplicitDependencies() {
+            componentInfo.addExplicitDependency("otherBean");
+            componentInfo.addExplicitDependency("anotherBean");
+            
+            assertEquals(2, componentInfo.getExplicitDependencies().size());
+            assertTrue(componentInfo.getExplicitDependencies().contains("otherBean"));
+            assertTrue(componentInfo.getExplicitDependencies().contains("anotherBean"));
+        }
+    }
 }
