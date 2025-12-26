@@ -21,6 +21,7 @@ public class VeldClassGenerator implements Opcodes {
     private static final String SYNTHETIC_SETTER_PREFIX = "__di_set_";
     
     private final List<ComponentMeta> components;
+    private final List<AopProxyGenerator.ProxyMeta> aopProxies = new ArrayList<>();
     
     public VeldClassGenerator(List<ComponentMeta> components) {
         this.components = components;
@@ -46,7 +47,7 @@ public class VeldClassGenerator implements Opcodes {
     }
     
     /**
-     * Generates all classes: Veld.class + $VeldLifecycle helpers for each component with lifecycle methods.
+     * Generates all classes: Veld.class + $VeldLifecycle helpers + AOP proxies.
      * @return Map of internal class name to bytecode
      */
     public Map<String, byte[]> generateAll() {
@@ -60,9 +61,40 @@ public class VeldClassGenerator implements Opcodes {
             }
         }
         
+        // Generate AOP proxy classes for components that need interception
+        collectAopProxies();
+        if (!aopProxies.isEmpty()) {
+            AopProxyGenerator aopGen = new AopProxyGenerator(aopProxies);
+            result.putAll(aopGen.generateAll());
+        }
+        
         // Generate main Veld.class
         result.put(VELD_CLASS, generate());
         return result;
+    }
+    
+    /**
+     * Collects AOP proxy metadata for components that require interception.
+     */
+    private void collectAopProxies() {
+        aopProxies.clear();
+        for (ComponentMeta comp : components) {
+            if (comp.needsAopProxy && !comp.aopMethods.isEmpty()) {
+                List<AopProxyGenerator.MethodMeta> methods = new ArrayList<>();
+                for (AopMethodMeta m : comp.aopMethods) {
+                    methods.add(new AopProxyGenerator.MethodMeta(m.name, m.descriptor, m.interceptorBindings));
+                }
+                aopProxies.add(new AopProxyGenerator.ProxyMeta(
+                    comp.internalName, methods, comp.interceptorClasses));
+            }
+        }
+    }
+    
+    /**
+     * Returns the proxy internal name for a component, or the original if no proxy.
+     */
+    private String getEffectiveInternalName(ComponentMeta comp) {
+        return comp.needsAopProxy ? comp.internalName + "$AopProxy" : comp.internalName;
     }
     
     public byte[] generate() {
@@ -146,9 +178,11 @@ public class VeldClassGenerator implements Opcodes {
         
         for (ComponentMeta comp : sorted) {
             String fieldName = getFieldName(comp);
+            String effectiveInternal = getEffectiveInternalName(comp);
             String fieldType = "L" + comp.internalName + ";";
             
-            mv.visitTypeInsn(NEW, comp.internalName);
+            // Instantiate proxy class if AOP is needed, otherwise original class
+            mv.visitTypeInsn(NEW, effectiveInternal);
             mv.visitInsn(DUP);
             
             StringBuilder ctorDesc = new StringBuilder("(");
@@ -159,7 +193,7 @@ public class VeldClassGenerator implements Opcodes {
             }
             ctorDesc.append(")V");
             
-            mv.visitMethodInsn(INVOKESPECIAL, comp.internalName, "<init>", ctorDesc.toString(), false);
+            mv.visitMethodInsn(INVOKESPECIAL, effectiveInternal, "<init>", ctorDesc.toString(), false);
             mv.visitFieldInsn(PUTSTATIC, VELD_CLASS, fieldName, fieldType);
             
             // Field injections (handle both regular injections and @Value)
@@ -671,7 +705,10 @@ public class VeldClassGenerator implements Opcodes {
             null,  // preDestroyDescriptor
             false, // hasSubscribeMethods
             "lifecycleProcessor",  // componentName
-            new ArrayList<>()  // explicitDependencies
+            new ArrayList<>(),  // explicitDependencies
+            false,  // needsAopProxy
+            new ArrayList<>(),  // aopMethods
+            new ArrayList<>()   // interceptorClasses
         );
     }
     
@@ -693,7 +730,10 @@ public class VeldClassGenerator implements Opcodes {
             null,  // preDestroyDescriptor
             false, // hasSubscribeMethods
             "valueResolver",  // componentName
-            new ArrayList<>()  // explicitDependencies
+            new ArrayList<>(),  // explicitDependencies
+            false,  // needsAopProxy
+            new ArrayList<>(),  // aopMethods
+            new ArrayList<>()   // interceptorClasses
         );
     }
     
@@ -790,7 +830,9 @@ public class VeldClassGenerator implements Opcodes {
             "()" + returnType, null, null);
         mv.visitCode();
         
-        mv.visitTypeInsn(NEW, comp.internalName);
+        // Instantiate proxy class if AOP is needed, otherwise original class
+        String effectiveInternal = getEffectiveInternalName(comp);
+        mv.visitTypeInsn(NEW, effectiveInternal);
         mv.visitInsn(DUP);
         
         StringBuilder ctorDesc = new StringBuilder("(");
@@ -801,7 +843,7 @@ public class VeldClassGenerator implements Opcodes {
         }
         ctorDesc.append(")V");
         
-        mv.visitMethodInsn(INVOKESPECIAL, comp.internalName, "<init>", ctorDesc.toString(), false);
+        mv.visitMethodInsn(INVOKESPECIAL, effectiveInternal, "<init>", ctorDesc.toString(), false);
         mv.visitVarInsn(ASTORE, 0);
         
         for (FieldInjectionMeta field : comp.fieldInjections) {
@@ -1382,6 +1424,9 @@ public class VeldClassGenerator implements Opcodes {
         public final boolean hasSubscribeMethods;
         public final String componentName;  // @Named value for qualifier lookup
         public final List<String> explicitDependencies;  // @DependsOn bean names
+        public final boolean needsAopProxy;  // true if component requires AOP interception
+        public final List<AopMethodMeta> aopMethods;  // methods to intercept
+        public final List<String> interceptorClasses;  // applied interceptors
         
         public ComponentMeta(String className, String scope, boolean lazy,
                             List<String> constructorDeps, List<FieldInjectionMeta> fieldInjections,
@@ -1389,7 +1434,9 @@ public class VeldClassGenerator implements Opcodes {
                             String postConstructMethod, String postConstructDescriptor,
                             String preDestroyMethod, String preDestroyDescriptor,
                             boolean hasSubscribeMethods, String componentName,
-                            List<String> explicitDependencies) {
+                            List<String> explicitDependencies,
+                            boolean needsAopProxy, List<AopMethodMeta> aopMethods,
+                            List<String> interceptorClasses) {
             this.className = className;
             this.internalName = className.replace('.', '/');
             this.scope = scope;
@@ -1405,6 +1452,9 @@ public class VeldClassGenerator implements Opcodes {
             this.hasSubscribeMethods = hasSubscribeMethods;
             this.componentName = componentName;
             this.explicitDependencies = explicitDependencies != null ? explicitDependencies : new ArrayList<>();
+            this.needsAopProxy = needsAopProxy;
+            this.aopMethods = aopMethods != null ? aopMethods : new ArrayList<>();
+            this.interceptorClasses = interceptorClasses != null ? interceptorClasses : new ArrayList<>();
         }
         
         public static ComponentMeta parse(String line) {
@@ -1490,9 +1540,48 @@ public class VeldClassGenerator implements Opcodes {
                 explicitDependencies.addAll(Arrays.asList(parts[11].split(",")));
             }
             
+            // Parse needsAopProxy (index 12)
+            boolean needsAopProxy = false;
+            if (parts.length > 12 && !parts[12].isEmpty()) {
+                needsAopProxy = Boolean.parseBoolean(parts[12]);
+            }
+            
+            // Parse aopMethods (index 13) - format: methodName~descriptor~bindings;...
+            List<AopMethodMeta> aopMethods = new ArrayList<>();
+            if (parts.length > 13 && !parts[13].isEmpty()) {
+                for (String am : parts[13].split(";")) {
+                    if (am.isEmpty()) continue;
+                    String[] amp = am.split("~", 3);
+                    if (amp.length >= 2) {
+                        List<String> bindings = amp.length > 2 && !amp[2].isEmpty()
+                            ? Arrays.asList(amp[2].split(",")) : new ArrayList<>();
+                        aopMethods.add(new AopMethodMeta(amp[0], amp[1], bindings));
+                    }
+                }
+            }
+            
+            // Parse interceptorClasses (index 14)
+            List<String> interceptorClasses = new ArrayList<>();
+            if (parts.length > 14 && !parts[14].isEmpty()) {
+                interceptorClasses.addAll(Arrays.asList(parts[14].split(",")));
+            }
+            
             return new ComponentMeta(className, scope, lazy, ctorDeps, fields, methods, ifaces,
                 postConstructMethod, postConstructDescriptor, preDestroyMethod, preDestroyDescriptor,
-                hasSubscribeMethods, componentName, explicitDependencies);
+                hasSubscribeMethods, componentName, explicitDependencies,
+                needsAopProxy, aopMethods, interceptorClasses);
+        }
+    }
+    
+    public static class AopMethodMeta {
+        public final String name;
+        public final String descriptor;
+        public final List<String> interceptorBindings;
+        
+        public AopMethodMeta(String name, String descriptor, List<String> interceptorBindings) {
+            this.name = name;
+            this.descriptor = descriptor;
+            this.interceptorBindings = interceptorBindings;
         }
     }
     

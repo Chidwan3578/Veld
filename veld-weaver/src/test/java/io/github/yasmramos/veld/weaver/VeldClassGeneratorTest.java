@@ -176,6 +176,9 @@ class VeldClassGeneratorTest {
             "()V",
             true,
             "testComponent",
+            Collections.emptyList(),
+            false,
+            Collections.emptyList(),
             Collections.emptyList()
         );
         
@@ -197,7 +200,7 @@ class VeldClassGeneratorTest {
         List<ComponentMeta> components = Arrays.asList(
             new ComponentMeta("com.Test", "SINGLETON", false, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-                null, null, null, null, false, null, Collections.emptyList())
+                null, null, null, null, false, null, Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
@@ -210,7 +213,7 @@ class VeldClassGeneratorTest {
             new ComponentMeta("com.example.SimpleService", "SINGLETON", false, 
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), null, null, null, null, false, "simpleService", 
-                Collections.emptyList())
+                Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
@@ -226,11 +229,11 @@ class VeldClassGeneratorTest {
             new ComponentMeta("com.example.ServiceA", "SINGLETON", false, 
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), null, null, null, null, false, "serviceA", 
-                Collections.emptyList()),
+                Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList()),
             new ComponentMeta("com.example.ServiceB", "PROTOTYPE", true, 
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), null, null, null, null, false, "serviceB", 
-                Collections.emptyList())
+                Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
@@ -248,7 +251,7 @@ class VeldClassGeneratorTest {
                 Arrays.asList("com.example.Dependency"), 
                 Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), null, null, null, null, false, "withDeps", 
-                Collections.emptyList())
+                Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
@@ -268,7 +271,7 @@ class VeldClassGeneratorTest {
             new ComponentMeta("com.example.WithFields", "SINGLETON", false, 
                 Collections.emptyList(), fields, Collections.emptyList(),
                 Collections.emptyList(), null, null, null, null, false, "withFields", 
-                Collections.emptyList())
+                Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
@@ -284,7 +287,7 @@ class VeldClassGeneratorTest {
             new ComponentMeta("com.example.WithLifecycle", "SINGLETON", false, 
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), "init", "()V", "destroy", "()V", false, 
-                "withLifecycle", Collections.emptyList())
+                "withLifecycle", Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
@@ -300,7 +303,7 @@ class VeldClassGeneratorTest {
             new ComponentMeta("com.example.WithInterface", "SINGLETON", false, 
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Arrays.asList("com.example.IService"), null, null, null, null, false, 
-                "withInterface", Collections.emptyList())
+                "withInterface", Collections.emptyList(), false, Collections.emptyList(), Collections.emptyList())
         );
         
         VeldClassGenerator generator = new VeldClassGenerator(components);
