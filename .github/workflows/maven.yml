@@ -46,7 +46,10 @@ jobs:
     - name: Clean and compile with detailed output
       run: |
         echo "=== Starting Maven clean compile ==="
-        mvn clean compile -X --batch-mode
+        # First build all modules except benchmark (which needs plugins to be installed first)
+        mvn clean install -DskipTests -pl '!veld-benchmark' --batch-mode
+        # Then build benchmark module
+        mvn compile -pl veld-benchmark --batch-mode
       env:
         MAVEN_OPTS: "-Xmx2g -XX:+UseG1GC"
       timeout-minutes: 10
@@ -67,7 +70,7 @@ jobs:
     - name: Run unit tests
       run: |
         echo "=== Starting Maven test phase ==="
-        mvn test --batch-mode
+        mvn test -pl '!veld-benchmark' --batch-mode
       env:
         MAVEN_OPTS: "-Xmx2g -XX:+UseG1GC"
       timeout-minutes: 10
@@ -89,7 +92,7 @@ jobs:
     - name: Run integration tests
       run: |
         echo "=== Starting Maven integration test phase ==="
-        mvn verify -DskipITs=false -DskipGpg=true --batch-mode
+        mvn verify -DskipITs=false -Dmaven.gpg.skip=true -pl '!veld-benchmark' --batch-mode
       env:
         MAVEN_OPTS: "-Xmx2g -XX:+UseG1GC"
       timeout-minutes: 10
