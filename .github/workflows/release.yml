@@ -163,6 +163,17 @@ jobs:
         distribution: 'temurin'
         cache: maven
         
+    - name: Import GPG Key
+      id: import_gpg
+      uses: crazy-max/ghaction-import-gpg@v6
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        
+    - name: Verify GPG Key
+      run: |
+        echo "GPG Key ID: ${{ steps.import_gpg.outputs.keyid }}"
+        gpg --list-secret-keys --keyid-format LONG
     - name: Install GPG
       run: |
         sudo apt-get update -qq
@@ -250,10 +261,19 @@ jobs:
         SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
         SONATYPE_TOKEN: ${{ secrets.SONATYPE_TOKEN }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        GPG_KEYNAME: ${{ steps.import_gpg.outputs.keyid }}
+      run: |
+        # Ensure GPG uses non-interactive mode
+        export GPG_TTY=/dev/null
+        export GNUPGHOME=$HOME/.gnupg
+        
         GPG_KEYNAME: ${{ steps.setup-gpg.outputs.key_id }}
       run: |
         echo "=== Deploying Veld ${{ needs.prepare-release.outputs.version }} to Staging ==="
-        echo "Using GPG key: $GPG_KEYNAME"
+        echo "Using GPG key ID: $GPG_KEYNAME"
+        
+        # Verify GPG is working
+        gpg --list-secret-keys --keyid-format LONG 2>&1 || true
         
         # Configure GPG agent
         export GPG_TTY=$(tty)
@@ -266,6 +286,10 @@ jobs:
           -Dgpg.passphrase="$GPG_PASSPHRASE" \
           -Dgpg.keyname="$GPG_KEYNAME" \
           -Dgpg.executable=gpg \
+          -Dgpg.useAgent=false \
+          -Dgpg.keyname="$GPG_KEYNAME" \
+          -Dgpg.passphrase="$GPG_PASSPHRASE" \
+          -Dgpg.verbose=true
           -DaltDeploymentRepository=ossrh::default::https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
         
     - name: Create Staging Repository Summary
