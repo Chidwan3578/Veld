@@ -111,8 +111,9 @@ public class VeldProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
-            if (!discoveredComponents.isEmpty()) {
-                // Check for circular dependencies before generating code
+            // Check for circular dependencies before generating code
+            // Validate if we have any components OR factories
+            if (!discoveredComponents.isEmpty() || !discoveredFactories.isEmpty()) {
                 if (validateNoCyclicDependencies()) {
                     // Validate interface implementations (warnings only)
                     validateInterfaceImplementations();
@@ -211,6 +212,9 @@ public class VeldProcessor extends AbstractProcessor {
 
         // Process @Factory classes and @Bean methods
         processFactories(roundEnv);
+
+        // Build dependency graph for @Bean methods
+        buildFactoryDependencyGraph();
 
         // Generate source code for @Bean methods
         generateBeanFactories();
@@ -538,7 +542,33 @@ public class VeldProcessor extends AbstractProcessor {
             }
         }
     }
-    
+
+    /**
+     * Builds the dependency graph for @Bean methods.
+     * Adds each bean and its parameter dependencies to the graph.
+     * This allows detecting circular dependencies involving factory beans.
+     */
+    private void buildFactoryDependencyGraph() {
+        for (FactoryInfo factory : discoveredFactories) {
+            for (FactoryInfo.BeanMethod beanMethod : factory.getBeanMethods()) {
+                String beanType = beanMethod.getReturnType();
+                dependencyGraph.addComponent(beanType);
+
+                note("  -> Adding bean to dependency graph: " + beanType);
+
+                // Add dependencies from @Bean method parameters
+                for (String paramType : beanMethod.getParameterTypes()) {
+                    dependencyGraph.addDependency(beanType, paramType);
+                    note("    -> Bean dependency: " + beanType + " → " + paramType);
+                }
+            }
+        }
+
+        if (!discoveredFactories.isEmpty()) {
+            note("Factory dependency graph built with " + discoveredFactories.size() + " factories");
+        }
+    }
+
     /**
      * Resolves a bean name to its corresponding type name.
      * 

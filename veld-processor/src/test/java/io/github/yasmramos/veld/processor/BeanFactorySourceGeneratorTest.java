@@ -186,7 +186,8 @@ class BeanFactorySourceGeneratorTest {
         @DisplayName("Should generate valid Java source code structure")
         void shouldGenerateValidJavaSourceCode() {
             FactoryInfo factory = createTestFactory();
-            FactoryInfo.BeanMethod beanMethod = createTestBeanMethod("MyService", "createService");
+            // Use fully qualified name for return type to generate package declaration
+            FactoryInfo.BeanMethod beanMethod = createTestBeanMethod("com.example.MyService", "createService");
             factory.addBeanMethod(beanMethod);
 
             BeanFactorySourceGenerator generator = new BeanFactorySourceGenerator(factory, beanMethod, 0);
