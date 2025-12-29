@@ -412,4 +412,37 @@ public final class ComponentInfo {
             .map(InjectionPoint.Dependency::getTypeName)
             .collect(Collectors.toList());
     }
+    
+    // === UNRESOLVED INTERFACE DEPENDENCIES ===
+    // Dependencies that are interfaces without @Component implementations
+    
+    private final List<String> unresolvedInterfaceDependencies = new ArrayList<>();
+    
+    /**
+     * Adds an interface dependency that has no implementing component.
+     * These can be resolved at runtime via mock injection or other mechanisms.
+     * 
+     * @param interfaceName fully qualified interface name
+     */
+    public void addUnresolvedInterfaceDependency(String interfaceName) {
+        this.unresolvedInterfaceDependencies.add(interfaceName);
+    }
+    
+    /**
+     * Gets all interface dependencies that have no implementing component.
+     * 
+     * @return list of interface names that need external resolution
+     */
+    public List<String> getUnresolvedInterfaceDependencies() {
+        return unresolvedInterfaceDependencies;
+    }
+    
+    /**
+     * Checks if this component has any unresolved interface dependencies.
+     * 
+     * @return true if there are interfaces without implementations
+     */
+    public boolean hasUnresolvedInterfaceDependencies() {
+        return !unresolvedInterfaceDependencies.isEmpty();
+    }
 }

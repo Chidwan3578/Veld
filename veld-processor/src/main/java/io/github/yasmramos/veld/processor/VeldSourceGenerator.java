@@ -201,7 +201,7 @@ public final class VeldSourceGenerator {
             for (InjectionPoint.Dependency dep : ctor.getDependencies()) {
                 if (!first) sb.append(", ");
                 first = false;
-                sb.append(getGetterCallForType(dep.getActualTypeName()));
+                sb.append(getGetterCallForType(dep.getActualTypeName(), comp));
             }
         }
         sb.append(");\n");
@@ -215,7 +215,7 @@ public final class VeldSourceGenerator {
                 }
                 String setterName = "set" + capitalize(field.getName());
                 sb.append("        instance.").append(setterName).append("(")
-                  .append(getGetterCallForType(dep.getActualTypeName())).append(");\n");
+                  .append(getGetterCallForType(dep.getActualTypeName(), comp)).append(");\n");
             }
         }
         
@@ -226,7 +226,7 @@ public final class VeldSourceGenerator {
             for (InjectionPoint.Dependency dep : method.getDependencies()) {
                 if (!first) sb.append(", ");
                 first = false;
-                sb.append(getGetterCallForType(dep.getActualTypeName()));
+                sb.append(getGetterCallForType(dep.getActualTypeName(), comp));
             }
             sb.append(");\n");
         }
@@ -297,7 +297,45 @@ public final class VeldSourceGenerator {
         return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
     
+    /**
+     * Gets the getter call for a dependency type.
+     * For unresolved interface dependencies, returns null (to be resolved at runtime).
+     * 
+     * @param typeName the dependency type name
+     * @return the getter call code
+     */
     private String getGetterCallForType(String typeName) {
+        for (ComponentInfo comp : components) {
+            if (comp.getClassName().equals(typeName)) {
+                return getGetterMethodName(comp) + "()";
+            }
+            for (String iface : comp.getImplementedInterfaces()) {
+                if (iface.equals(typeName)) {
+                    return getGetterMethodName(comp) + "()";
+                }
+            }
+        }
+        return "get(" + typeName + ".class)";
+    }
+    
+    /**
+     * Gets the getter call for a dependency type, handling unresolved interface dependencies.
+     * For unresolved interface dependencies, returns null (to be resolved at runtime).
+     * 
+     * @param typeName the dependency type name
+     * @param component the component being created (to check its unresolved deps)
+     * @return the getter call code
+     */
+    private String getGetterCallForType(String typeName, ComponentInfo component) {
+        // Check if this is an unresolved interface dependency
+        if (component.hasUnresolvedInterfaceDependencies() && 
+            component.getUnresolvedInterfaceDependencies().contains(typeName)) {
+            // For unresolved interface dependencies, return null
+            // These will be resolved at runtime (e.g., via mocks in tests)
+            return "null /* unresolved interface: " + typeName + " */";
+        }
+        
+        // Check in component list first
         for (ComponentInfo comp : components) {
             if (comp.getClassName().equals(typeName)) {
                 return getGetterMethodName(comp) + "()";
