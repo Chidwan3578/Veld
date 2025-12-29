@@ -64,6 +64,16 @@ public final class ComponentInfo {
         return className;
     }
     
+    /**
+     * Sets the class name and updates internal name accordingly.
+     * 
+     * @param className the new fully qualified class name
+     */
+    public void setClassName(String className) {
+        this.className = className;
+        this.internalName = className.replace('.', '/');
+    }
+    
     public String getInternalName() {
         return internalName;
     }
