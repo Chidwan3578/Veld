@@ -94,8 +94,8 @@ jobs:
         echo ""
         echo "Deploying snapshot version: $SNAPSHOT_VERSION"
         mvn -B deploy \
-          -Psnapshot \
           -DskipTests \
+          -Dgpg.skip=true \
           --file pom.xml
         echo ""
         echo "Deployment completed!"
